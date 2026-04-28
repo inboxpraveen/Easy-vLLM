@@ -10,6 +10,7 @@ import os
 from flask import Flask
 
 from easy_vllm.routes import register_routes
+from easy_vllm.storage import init_db
 
 
 def create_app() -> Flask:
@@ -17,9 +18,19 @@ def create_app() -> Flask:
         __name__,
         static_folder="static",
         template_folder="templates",
+        instance_relative_config=True,
     )
     app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 * 1024
     app.config["JSON_SORT_KEYS"] = False
+
+    db_path = os.environ.get(
+        "EASY_VLLM_DB",
+        os.path.join(app.instance_path, "easy_vllm.db"),
+    )
+    app.config["EASY_VLLM_DB"] = db_path
+    os.makedirs(app.instance_path, exist_ok=True)
+    init_db(db_path)
+
     register_routes(app)
     return app
 

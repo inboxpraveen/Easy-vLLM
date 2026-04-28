@@ -1,0 +1,69 @@
+<section class="hero" aria-label="What is easy-vLLM">
+  <div class="hero__inner">
+    <span class="hero__eyebrow">vllm deployment generator</span>
+    <h1 class="hero__title">
+      Run <span class="hero__highlight">vLLM</span> without memorizing vLLM.
+    </h1>
+    <p class="hero__subtitle">
+      Easy-vLLM is a wizard that picks safe defaults, estimates GPU memory fit,
+      and produces ready-to-run artifacts: a one-line CLI command, a polished
+      <code>docker-compose.yml</code>, test clients, and a downloadable zip.
+    </p>
+
+    <div class="hero__cta">
+      <a class="btn btn--primary btn--lg" href="#new" data-route="new" id="hero-build">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Build a new deployment
+      </a>
+      <a class="btn btn--ghost btn--lg" href="https://docs.vllm.ai/en/latest/cli/serve/" target="_blank" rel="noopener">
+        vLLM CLI reference
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="how" aria-label="How it works">
+  <div class="how__grid">
+    <article class="how__card">
+      <div class="how__step">1</div>
+      <h3 class="how__title">Tell us your model &amp; hardware</h3>
+      <p class="how__desc">
+        Hugging Face ID or local path. Drop the model's <code>config.json</code>
+        for an accurate estimate. Pick your GPU, count, and workload.
+      </p>
+    </article>
+    <article class="how__card">
+      <div class="how__step">2</div>
+      <h3 class="how__title">We pick safe vLLM defaults</h3>
+      <p class="how__desc">
+        Live memory-fit gauge tells you Good, Risky, or Likely-OOM. Ordered fixes
+        suggest exactly what to lower. The <code>vllm serve</code> command updates
+        as you type.
+      </p>
+    </article>
+    <article class="how__card">
+      <div class="how__step">3</div>
+      <h3 class="how__title">Get ready-to-run artifacts</h3>
+      <p class="how__desc">
+        One-line command, polished <code>docker-compose.yml</code>, test client,
+        and zip download. Every deployment is saved so you can revisit or
+        duplicate it later.
+      </p>
+    </article>
+  </div>
+</section>
+
+<section class="history" aria-label="Recent deployments">
+  <div class="history__head">
+    <h2 class="history__title">Recent deployments</h2>
+    <a class="btn btn--ghost btn--sm" href="#new" data-route="new">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New
+    </a>
+  </div>
+  <div class="history__grid" id="history-grid"></div>
+  <p class="history__empty" id="history-empty" hidden>
+    No deployments yet. Click <strong>Build a new deployment</strong> above to make your first one.
+  </p>
+</section>

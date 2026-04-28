@@ -21,6 +21,30 @@ LoadFormat = Literal["auto", "bitsandbytes", "gguf", "safetensors", "pt"]
 FitStatus = Literal["good", "risky", "oom", "unknown"]
 SeverityLevel = Literal["info", "warning", "danger", "error"]
 
+SchedulingPolicy = Literal["fcfs", "priority"]
+DistributedExecutorBackend = Literal["auto", "mp", "ray", "external_launcher"]
+SpeculativeMethod = Literal[
+    "none", "ngram", "draft_model", "mtp", "eagle3", "suffix"
+]
+ToolCallParser = Literal[
+    "hermes",
+    "mistral",
+    "llama3_json",
+    "pythonic",
+    "granite",
+    "jamba",
+    "internlm",
+    "glm45",
+    "kimi_k2",
+    "qwen3_coder",
+]
+ReasoningParser = Literal[
+    "deepseek_r1",
+    "granite",
+    "qwen3",
+    "minimax_m1",
+]
+
 
 class ModelConfigInfo(BaseModel):
     """Fields extracted from an uploaded Hugging Face ``config.json``."""
@@ -84,22 +108,80 @@ class DeploymentRequest(BaseModel):
     output_tokens: int = Field(default=1024, ge=1, le=2_000_000)
     max_num_seqs: int = Field(default=32, ge=1, le=4096)
 
-    # Step 3 - Optimization
+    # Step 3 - Optimization (Simple)
     dtype: DType = "auto"
     quantization: Quantization = "none"
     enable_prefix_caching: bool = True
+    enable_chunked_prefill: Optional[bool] = None  # None = vLLM default (V1: on)
+    enforce_eager: bool = False
 
-    # Advanced
+    # KV cache & memory
     kv_cache_dtype: KvCacheDType = "auto"
-    max_num_batched_tokens: Optional[int] = Field(default=None, ge=1, le=2_000_000)
     cpu_offload_gb: Optional[float] = Field(default=None, ge=0, le=1024)
-    load_format: LoadFormat = "auto"
-    generation_config_vllm: bool = True
+    swap_space_gb: Optional[float] = Field(default=None, ge=0, le=1024)
+    disable_sliding_window: bool = False
+    disable_cascade_attn: bool = False
+    seed: Optional[int] = Field(default=None, ge=0, le=2**31 - 1)
+
+    # Throughput / scheduling
+    max_num_batched_tokens: Optional[int] = Field(default=None, ge=1, le=2_000_000)
+    scheduling_policy: SchedulingPolicy = "fcfs"
+    async_scheduling: bool = False
+    max_num_partial_prefills: Optional[int] = Field(default=None, ge=1, le=64)
+    long_prefill_token_threshold: Optional[int] = Field(default=None, ge=1, le=2_000_000)
+
+    # LoRA adapters
+    enable_lora: bool = False
+    max_loras: Optional[int] = Field(default=None, ge=1, le=128)
+    max_lora_rank: Optional[int] = Field(default=None, ge=1, le=512)
+    lora_modules: Optional[str] = None  # newline-separated `name=path`
+
+    # Speculative decoding
+    speculative_method: SpeculativeMethod = "none"
+    speculative_model: Optional[str] = None
+    num_speculative_tokens: Optional[int] = Field(default=None, ge=1, le=64)
+
+    # Tools / chat / reasoning
+    enable_auto_tool_choice: bool = False
+    tool_call_parser: Optional[ToolCallParser] = None
+    chat_template: Optional[str] = None
+    reasoning_parser: Optional[ReasoningParser] = None
+
+    # API server / logging
     api_key_required: bool = False
+    enable_log_requests: bool = False
+    max_log_len: Optional[int] = Field(default=None, ge=10, le=1_000_000)
+    allowed_origins: Optional[str] = None  # comma-separated origins
+
+    # Loading & distribution
+    load_format: LoadFormat = "auto"
+    tokenizer: Optional[str] = None
+    revision: Optional[str] = None
+    download_dir: Optional[str] = None
+    data_parallel_size: Optional[int] = Field(default=None, ge=1, le=64)
+    distributed_executor_backend: DistributedExecutorBackend = "auto"
+
+    # Multimodal
+    limit_mm_per_prompt: Optional[str] = None  # e.g. "image=4,video=1"
+
+    # Image / generation / passthrough
+    generation_config_vllm: bool = True
     image_tag: str = "vllm/vllm-openai:latest"
     extra_flags: Optional[str] = None
 
-    @field_validator("served_model_name", mode="before")
+    @field_validator(
+        "served_model_name",
+        "tokenizer",
+        "revision",
+        "download_dir",
+        "speculative_model",
+        "chat_template",
+        "allowed_origins",
+        "limit_mm_per_prompt",
+        "lora_modules",
+        "extra_flags",
+        mode="before",
+    )
     @classmethod
     def _empty_to_none(cls, v: Any) -> Any:
         if isinstance(v, str) and not v.strip():
@@ -151,3 +233,42 @@ class GpuPreset(BaseModel):
     vram_gb: float
     family: str
     notes: Optional[str] = None
+
+
+class DeploymentSummary(BaseModel):
+    """Lightweight summary used in the history list."""
+
+    id: str
+    name: str
+    model_id: Optional[str] = None
+    gpu_preset: Optional[str] = None
+    gpu_count: Optional[int] = None
+    quantization: Optional[str] = None
+    fit_status: Optional[str] = None
+    percent_used: Optional[float] = None
+    created_at: str
+
+
+class DeploymentRecord(DeploymentSummary):
+    """Full deployment record returned by GET /api/deployments/<id>."""
+
+    request: dict[str, Any]
+    artifacts: dict[str, str]
+    memory: dict[str, Any]
+    warnings: list[dict[str, Any]]
+    command_oneline: str
+    command_multiline: str
+
+
+class GenerateResponse(BaseModel):
+    """Response shape from POST /api/generate."""
+
+    id: str
+    name: str
+    artifacts: dict[str, str]
+    command_oneline: str
+    command_multiline: str
+    memory: MemoryBreakdown
+    warnings: list[WarningItem]
+    created_at: str
+    download_url: str

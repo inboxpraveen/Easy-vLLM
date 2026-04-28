@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import io
 import json
+import os
+import tempfile
 import zipfile
 
 import pytest
@@ -11,7 +13,9 @@ from app import create_app
 
 
 @pytest.fixture()
-def client():
+def client(monkeypatch):
+    tmpdir = tempfile.mkdtemp(prefix="easy-vllm-test-")
+    monkeypatch.setenv("EASY_VLLM_DB", os.path.join(tmpdir, "test.db"))
     app = create_app()
     app.config.update(TESTING=True)
     return app.test_client()
@@ -77,7 +81,7 @@ def test_estimate_endpoint_returns_memory_breakdown(client):
     assert data["memory"]["fit_status"] in ("good", "risky", "oom")
 
 
-def test_generate_endpoint_returns_zip(client):
+def test_generate_endpoint_saves_and_returns_record(client):
     body = {
         "model_id": "Qwen/Qwen3-8B-Instruct",
         "manual_param_count_b": 8.0,
@@ -89,25 +93,82 @@ def test_generate_endpoint_returns_zip(client):
     }
     res = client.post("/api/generate", json=body)
     assert res.status_code == 200
-    assert res.mimetype == "application/zip"
+    data = res.get_json()
 
-    zf = zipfile.ZipFile(io.BytesIO(res.data))
+    assert data["id"]
+    assert data["name"]
+    assert data["model_id"] == "Qwen/Qwen3-8B-Instruct"
+    assert data["quantization"] == "awq"
+    assert data["download_url"].endswith("/zip")
+
+    artifacts = data["artifacts"]
+    assert "docker-compose.yml" in artifacts
+    assert ".env" in artifacts
+    assert "test_client.py" in artifacts
+    assert "test_curl.sh" in artifacts
+    assert "README.md" in artifacts
+    assert "config_summary.json" in artifacts
+
+    assert "vllm/vllm-openai" in artifacts["docker-compose.yml"]
+    assert "--model Qwen/Qwen3-8B-Instruct" in artifacts["docker-compose.yml"]
+    assert "--quantization awq" in artifacts["docker-compose.yml"]
+
+
+def test_generate_then_list_get_and_zip(client):
+    body = {
+        "model_id": "Qwen/Qwen3-8B-Instruct",
+        "manual_param_count_b": 8.0,
+        "gpu_memory_gb": 24.0,
+        "input_tokens": 1024,
+        "output_tokens": 256,
+        "max_num_seqs": 4,
+    }
+    res = client.post("/api/generate", json=body)
+    assert res.status_code == 200
+    deployment_id = res.get_json()["id"]
+
+    # list
+    res2 = client.get("/api/deployments")
+    assert res2.status_code == 200
+    rows = res2.get_json()
+    assert any(r["id"] == deployment_id for r in rows)
+
+    # get
+    res3 = client.get(f"/api/deployments/{deployment_id}")
+    assert res3.status_code == 200
+    rec = res3.get_json()
+    assert rec["id"] == deployment_id
+    assert "request" in rec and "artifacts" in rec
+    assert "memory" in rec
+    assert "command_oneline" in rec
+
+    # zip
+    res4 = client.get(f"/api/deployments/{deployment_id}/zip")
+    assert res4.status_code == 200
+    assert res4.mimetype == "application/zip"
+    zf = zipfile.ZipFile(io.BytesIO(res4.data))
     names = {n.split("/", 1)[1] for n in zf.namelist()}
-    assert "docker-compose.yml" in names
-    assert ".env" in names
-    assert "test_client.py" in names
-    assert "test_curl.sh" in names
-    assert "README.md" in names
-    assert "config_summary.json" in names
+    assert {"docker-compose.yml", ".env", "README.md"}.issubset(names)
 
-    compose = zf.read("easy-vllm-output/docker-compose.yml").decode()
-    assert "vllm/vllm-openai" in compose
-    assert "--model Qwen/Qwen3-8B-Instruct" in compose
-    assert "--quantization awq" in compose
 
-    summary = json.loads(zf.read("easy-vllm-output/config_summary.json"))
-    assert summary["model"]["model_id"] == "Qwen/Qwen3-8B-Instruct"
-    assert summary["optimization"]["quantization"] == "awq"
+def test_delete_deployment(client):
+    body = {
+        "model_id": "x/y",
+        "manual_param_count_b": 1.0,
+        "gpu_memory_gb": 24.0,
+    }
+    deployment_id = client.post("/api/generate", json=body).get_json()["id"]
+    res = client.delete(f"/api/deployments/{deployment_id}")
+    assert res.status_code == 200
+    assert res.get_json()["ok"] is True
+    # second delete returns 404
+    res2 = client.delete(f"/api/deployments/{deployment_id}")
+    assert res2.status_code == 404
+
+
+def test_get_unknown_deployment_returns_404(client):
+    res = client.get("/api/deployments/does-not-exist")
+    assert res.status_code == 404
 
 
 def test_generate_endpoint_blocks_on_validation_error(client):

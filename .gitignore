@@ -14,10 +14,12 @@ dist/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.cursor/
 
 # Flask
 instance/
 *.flask_session
+*.db
 
 # IDE
 .vscode/

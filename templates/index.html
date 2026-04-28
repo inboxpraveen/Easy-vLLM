@@ -1,69 +1,73 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="hero">
-  <div class="hero__inner">
-    <span class="hero__eyebrow">deployment generator</span>
-    <h1 class="hero__title">
-      Run <span class="hero__highlight">vLLM</span> without memorizing vLLM.
-    </h1>
-    <p class="hero__subtitle">
-      Answer 3 quick questions. We'll estimate your GPU fit, build the right
-      <code>vllm serve</code> command, and ship you a ready-to-run Docker
-      Compose project.
-    </p>
-  </div>
-</section>
+<!-- ======================== Hero / Home view =========================== -->
+<div class="view view--home is-active" id="view-home" data-view="home">
+  {% include "_hero.html" %}
+</div>
 
-<section class="wizard" aria-label="Deployment wizard">
-  <ol class="stepper" role="list">
-    <li class="stepper__item is-active" data-step="1">
-      <span class="stepper__num">1</span>
-      <span class="stepper__label">Model</span>
-    </li>
-    <li class="stepper__item" data-step="2">
-      <span class="stepper__num">2</span>
-      <span class="stepper__label">Hardware</span>
-    </li>
-    <li class="stepper__item" data-step="3">
-      <span class="stepper__num">3</span>
-      <span class="stepper__label">Optimize</span>
-    </li>
-  </ol>
+<!-- ============================ Wizard view ============================ -->
+<div class="view view--new" id="view-new" data-view="new" hidden>
+  <section class="wizard" aria-label="Deployment wizard">
+    <div class="wizard__topbar">
+      <a class="btn btn--ghost btn--sm" href="#home" data-route="home">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+        Home
+      </a>
+      <ol class="stepper" role="list">
+        <li class="stepper__item is-active" data-step="1">
+          <span class="stepper__num">1</span>
+          <span class="stepper__label">Model</span>
+        </li>
+        <li class="stepper__item" data-step="2">
+          <span class="stepper__num">2</span>
+          <span class="stepper__label">Hardware</span>
+        </li>
+        <li class="stepper__item" data-step="3">
+          <span class="stepper__num">3</span>
+          <span class="stepper__label">Optimize</span>
+        </li>
+      </ol>
+      <span class="wizard__topbar-spacer" aria-hidden="true"></span>
+    </div>
 
-  <div class="wizard__layout">
-    <form id="wizard-form" class="wizard__form" autocomplete="off" novalidate>
-      <input type="hidden" name="config_info_json" id="config_info_json" />
+    <div class="wizard__layout">
+      <form id="wizard-form" class="wizard__form" autocomplete="off" novalidate>
+        <input type="hidden" name="config_info_json" id="config_info_json" />
 
-      <div id="step-content" class="step-viewport">
-        {% include "_step_model.html" %}
-        {% include "_step_hardware.html" %}
-        {% include "_step_optimization.html" %}
-      </div>
+        <div id="step-content" class="step-viewport">
+          {% include "_step_model.html" %}
+          {% include "_step_hardware.html" %}
+          {% include "_step_optimization.html" %}
+        </div>
 
-      <div class="wizard__nav">
-        <button type="button" class="btn btn--ghost" id="btn-prev" disabled>
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-          Back
-        </button>
-        <button type="button" class="btn btn--primary" id="btn-next">
-          Next
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
-        </button>
-        <button type="button" class="btn btn--primary btn--generate" id="btn-generate" hidden>
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Generate deployment
-        </button>
-      </div>
-    </form>
+        <div class="wizard__nav">
+          <button type="button" class="btn btn--ghost" id="btn-prev" disabled>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+            <span>Back</span>
+          </button>
+          <button type="button" class="btn btn--primary" id="btn-action" data-mode="next">
+            <span class="btn-action__label">Next</span>
+            <svg class="btn-action__icon-next" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+            <svg class="btn-action__icon-gen" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </button>
+        </div>
+      </form>
 
-    <aside class="live-panel" id="live-panel" aria-live="polite">
-      {% include "_live_panel.html" %}
-    </aside>
-  </div>
-</section>
+      <aside class="live-panel" id="live-panel" aria-live="polite">
+        {% include "_live_panel.html" %}
+      </aside>
+    </div>
+  </section>
+</div>
 
-{% include "_result.html" %}
+<!-- ====================== Artifacts (deployment) view ================== -->
+<div class="view view--deployment" id="view-deployment" data-view="deployment" hidden>
+  {% include "_artifacts.html" %}
+</div>
+
+<!-- ============================ Toast stack ============================ -->
+<div class="toast-stack" id="toast-stack" aria-live="polite" aria-atomic="true"></div>
 
 <script id="gpu-presets-data" type="application/json">{{ gpu_presets | tojson }}</script>
 {% endblock %}

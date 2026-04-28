@@ -1,7 +1,10 @@
 <section class="step" data-step="3" aria-label="Step 3: Optimization" hidden>
   <header class="step__header">
     <h2 class="step__title">Optimize</h2>
-    <p class="step__sub">Pick precision and quantization. Toggle Advanced for the full vLLM flag set.</p>
+    <p class="step__sub">
+      Pick precision and quantization. Toggle <strong>Advanced</strong> to expand
+      KV cache, scheduling, LoRA, speculative decoding, tools, and more.
+    </p>
   </header>
 
   <div class="mode-switch">
@@ -14,116 +17,458 @@
     </div>
   </div>
 
-  <div class="field-group">
-    <h3 class="group-title">Precision</h3>
-
-    <div class="field">
-      <label class="field__label" for="dtype">Data type (<code>--dtype</code>)</label>
-      <select class="field__input" id="dtype" name="dtype">
-        <option value="auto">auto (recommended)</option>
-        <option value="bfloat16">bfloat16</option>
-        <option value="float16">float16</option>
-        <option value="float32">float32</option>
-      </select>
-    </div>
-
-    <div class="field">
-      <label class="field__label" for="quantization">Quantization (<code>--quantization</code>)</label>
-      <select class="field__input" id="quantization" name="quantization">
-        <option value="none">None - use full precision</option>
-        <option value="awq">AWQ - 4-bit, NVIDIA-friendly</option>
-        <option value="gptq">GPTQ - 4-bit, broad support</option>
-        <option value="fp8">FP8 - Hopper / Ada / MI300X</option>
-        <option value="bitsandbytes">BitsAndBytes - simplest 4-bit</option>
-        <option value="gguf">GGUF - llama.cpp-style files</option>
-        <option value="marlin">Marlin - optimized AWQ/GPTQ kernels</option>
-      </select>
+  <!-- 1. Precision & Quantization (Simple) -->
+  <details class="acc" open>
+    <summary class="acc__summary">
+      <span class="acc__num">1</span>
+      <span class="acc__title">Precision &amp; Quantization</span>
+      <span class="acc__sub">dtype, quantization, prefix &amp; chunked prefill</span>
+      <span class="acc__chev" aria-hidden="true"></span>
+    </summary>
+    <div class="acc__body">
+      <div class="field-row field-row--two">
+        <div class="field">
+          <label class="field__label" for="dtype">Data type (<code>--dtype</code>)</label>
+          <select class="field__input" id="dtype" name="dtype">
+            <option value="auto">auto (recommended)</option>
+            <option value="bfloat16">bfloat16</option>
+            <option value="float16">float16</option>
+            <option value="float32">float32</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field__label" for="quantization">Quantization (<code>--quantization</code>)</label>
+          <select class="field__input" id="quantization" name="quantization">
+            <option value="none">None - full precision</option>
+            <option value="awq">AWQ - 4-bit, NVIDIA-friendly</option>
+            <option value="gptq">GPTQ - 4-bit, broad support</option>
+            <option value="fp8">FP8 - Hopper / Ada / MI300X</option>
+            <option value="bitsandbytes">BitsAndBytes - simplest 4-bit</option>
+            <option value="gguf">GGUF - llama.cpp-style files</option>
+            <option value="marlin">Marlin - optimized AWQ/GPTQ kernels</option>
+          </select>
+        </div>
+      </div>
       <p class="field__hint" id="quantization-hint">Pick a pre-quantized checkpoint matching this format.</p>
-    </div>
 
-    <div class="field-row">
-      <label class="toggle">
-        <input type="checkbox" id="enable_prefix_caching" name="enable_prefix_caching" checked />
-        <span class="toggle__visual"></span>
-        <span class="toggle__text">Enable prefix caching
-          <span class="toggle__hint">Speeds up repeated prompts. Recommended on.</span>
-        </span>
-      </label>
-    </div>
-  </div>
-
-  <div class="field-group adv-only">
-    <h3 class="group-title">Advanced runtime</h3>
-
-    <div class="field-row field-row--two">
-      <div class="field">
-        <label class="field__label" for="kv_cache_dtype">KV cache dtype</label>
-        <select class="field__input" id="kv_cache_dtype" name="kv_cache_dtype">
-          <option value="auto">auto</option>
-          <option value="fp16">fp16</option>
-          <option value="bf16">bf16</option>
-          <option value="fp8">fp8</option>
-          <option value="fp8_e4m3">fp8_e4m3</option>
-          <option value="fp8_e5m2">fp8_e5m2</option>
-        </select>
+      <div class="field-row">
+        <label class="toggle">
+          <input type="checkbox" id="enable_prefix_caching" name="enable_prefix_caching" checked />
+          <span class="toggle__visual"></span>
+          <span class="toggle__text">Enable prefix caching
+            <span class="toggle__hint">Speeds up repeated prompts. Recommended on.</span>
+          </span>
+        </label>
       </div>
-      <div class="field">
-        <label class="field__label" for="max_num_batched_tokens">Max batched tokens <span class="field__optional">optional</span></label>
-        <input class="field__input" type="number" min="1" max="2000000" step="1"
-               id="max_num_batched_tokens" name="max_num_batched_tokens" placeholder="auto" />
+
+      <div class="field-row adv-only">
+        <label class="toggle">
+          <input type="checkbox" id="enable_chunked_prefill" name="enable_chunked_prefill" />
+          <span class="toggle__visual"></span>
+          <span class="toggle__text">Force <code>--enable-chunked-prefill</code>
+            <span class="toggle__hint">Default in vLLM V1; toggle to override explicitly.</span>
+          </span>
+        </label>
+      </div>
+      <div class="field-row adv-only">
+        <label class="toggle">
+          <input type="checkbox" id="enforce_eager" name="enforce_eager" />
+          <span class="toggle__visual"></span>
+          <span class="toggle__text">Enforce eager (<code>--enforce-eager</code>)
+            <span class="toggle__hint">Skips CUDA graph capture. Saves a bit of VRAM, lower throughput.</span>
+          </span>
+        </label>
       </div>
     </div>
+  </details>
 
-    <div class="field-row field-row--two">
-      <div class="field">
-        <label class="field__label" for="cpu_offload_gb">CPU offload (GiB) <span class="field__optional">optional</span></label>
-        <input class="field__input" type="number" min="0" max="1024" step="1"
-               id="cpu_offload_gb" name="cpu_offload_gb" placeholder="0" />
+  <!-- 2. KV cache & memory (Advanced) -->
+  <details class="acc adv-only">
+    <summary class="acc__summary">
+      <span class="acc__num">2</span>
+      <span class="acc__title">KV cache &amp; memory</span>
+      <span class="acc__sub">kv-cache dtype, CPU offload, swap, sliding window</span>
+      <span class="acc__chev" aria-hidden="true"></span>
+    </summary>
+    <div class="acc__body">
+      <div class="field-row field-row--two">
+        <div class="field">
+          <label class="field__label" for="kv_cache_dtype">KV cache dtype</label>
+          <select class="field__input" id="kv_cache_dtype" name="kv_cache_dtype">
+            <option value="auto">auto</option>
+            <option value="fp16">fp16</option>
+            <option value="bf16">bf16</option>
+            <option value="fp8">fp8</option>
+            <option value="fp8_e4m3">fp8_e4m3</option>
+            <option value="fp8_e5m2">fp8_e5m2</option>
+          </select>
+          <p class="field__hint">FP8 KV cache halves memory at small quality cost.</p>
+        </div>
+        <div class="field">
+          <label class="field__label" for="cpu_offload_gb">CPU offload (GiB) <span class="field__optional">optional</span></label>
+          <input class="field__input" type="number" min="0" max="1024" step="1"
+                 id="cpu_offload_gb" name="cpu_offload_gb" placeholder="0" />
+          <p class="field__hint"><code>--cpu-offload-gb</code>. Trades throughput for VRAM.</p>
+        </div>
+      </div>
+
+      <div class="field-row field-row--two">
+        <div class="field">
+          <label class="field__label" for="swap_space_gb">Swap space (GiB) <span class="field__optional">V0</span></label>
+          <input class="field__input" type="number" min="0" max="1024" step="1"
+                 id="swap_space_gb" name="swap_space_gb" placeholder="0" />
+          <p class="field__hint"><code>--swap-space</code>. Mostly ignored on V1 engine.</p>
+        </div>
+        <div class="field">
+          <label class="field__label" for="seed">Seed <span class="field__optional">optional</span></label>
+          <input class="field__input" type="number" min="0" max="2147483647" step="1"
+                 id="seed" name="seed" placeholder="(random)" />
+          <p class="field__hint">Reproducible decoding across restarts.</p>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <label class="toggle">
+          <input type="checkbox" id="disable_sliding_window" name="disable_sliding_window" />
+          <span class="toggle__visual"></span>
+          <span class="toggle__text">Disable sliding window
+            <span class="toggle__hint">Force full attention even when the model defines a window.</span>
+          </span>
+        </label>
+      </div>
+      <div class="field-row">
+        <label class="toggle">
+          <input type="checkbox" id="disable_cascade_attn" name="disable_cascade_attn" />
+          <span class="toggle__visual"></span>
+          <span class="toggle__text">Disable cascade attention
+            <span class="toggle__hint">Useful for debugging or kernel-compat issues.</span>
+          </span>
+        </label>
+      </div>
+    </div>
+  </details>
+
+  <!-- 3. Throughput & scheduling (Advanced) -->
+  <details class="acc adv-only">
+    <summary class="acc__summary">
+      <span class="acc__num">3</span>
+      <span class="acc__title">Throughput &amp; scheduling</span>
+      <span class="acc__sub">batched tokens, scheduling policy, async, partial prefills</span>
+      <span class="acc__chev" aria-hidden="true"></span>
+    </summary>
+    <div class="acc__body">
+      <div class="field-row field-row--two">
+        <div class="field">
+          <label class="field__label" for="max_num_batched_tokens">Max batched tokens <span class="field__optional">optional</span></label>
+          <input class="field__input" type="number" min="1" max="2000000" step="1"
+                 id="max_num_batched_tokens" name="max_num_batched_tokens" placeholder="auto" />
+          <p class="field__hint">Higher = better TTFT; smaller = lower ITL.</p>
+        </div>
+        <div class="field">
+          <label class="field__label" for="scheduling_policy">Scheduling policy</label>
+          <select class="field__input" id="scheduling_policy" name="scheduling_policy">
+            <option value="fcfs">fcfs (default)</option>
+            <option value="priority">priority</option>
+          </select>
+          <p class="field__hint">FCFS is simplest. Priority needs per-request priority headers.</p>
+        </div>
+      </div>
+
+      <div class="field-row field-row--two">
+        <div class="field">
+          <label class="field__label" for="max_num_partial_prefills">Max partial prefills <span class="field__optional">optional</span></label>
+          <input class="field__input" type="number" min="1" max="64" step="1"
+                 id="max_num_partial_prefills" name="max_num_partial_prefills" placeholder="auto" />
+        </div>
+        <div class="field">
+          <label class="field__label" for="long_prefill_token_threshold">Long-prefill threshold <span class="field__optional">optional</span></label>
+          <input class="field__input" type="number" min="1" max="2000000" step="1"
+                 id="long_prefill_token_threshold" name="long_prefill_token_threshold" placeholder="auto" />
+        </div>
+      </div>
+
+      <div class="field-row">
+        <label class="toggle">
+          <input type="checkbox" id="async_scheduling" name="async_scheduling" />
+          <span class="toggle__visual"></span>
+          <span class="toggle__text">Async scheduling
+            <span class="toggle__hint"><code>--async-scheduling</code>. Overlaps scheduler with model.</span>
+          </span>
+        </label>
+      </div>
+    </div>
+  </details>
+
+  <!-- 4. LoRA adapters (Advanced) -->
+  <details class="acc adv-only">
+    <summary class="acc__summary">
+      <span class="acc__num">4</span>
+      <span class="acc__title">LoRA adapters</span>
+      <span class="acc__sub">enable LoRA, max-loras, lora-modules</span>
+      <span class="acc__chev" aria-hidden="true"></span>
+    </summary>
+    <div class="acc__body">
+      <div class="field-row">
+        <label class="toggle">
+          <input type="checkbox" id="enable_lora" name="enable_lora" />
+          <span class="toggle__visual"></span>
+          <span class="toggle__text">Enable LoRA serving
+            <span class="toggle__hint">Adds <code>--enable-lora</code>.</span>
+          </span>
+        </label>
+      </div>
+      <div class="field-row field-row--two">
+        <div class="field">
+          <label class="field__label" for="max_loras">Max LoRAs <span class="field__optional">optional</span></label>
+          <input class="field__input" type="number" min="1" max="128" step="1"
+                 id="max_loras" name="max_loras" placeholder="4" />
+        </div>
+        <div class="field">
+          <label class="field__label" for="max_lora_rank">Max LoRA rank <span class="field__optional">optional</span></label>
+          <input class="field__input" type="number" min="1" max="512" step="1"
+                 id="max_lora_rank" name="max_lora_rank" placeholder="16" />
+        </div>
       </div>
       <div class="field">
-        <label class="field__label" for="load_format">Load format</label>
-        <select class="field__input" id="load_format" name="load_format">
-          <option value="auto">auto</option>
-          <option value="safetensors">safetensors</option>
-          <option value="pt">pt</option>
-          <option value="bitsandbytes">bitsandbytes</option>
-          <option value="gguf">gguf</option>
-        </select>
+        <label class="field__label" for="lora_modules">LoRA modules <span class="field__optional">one per line</span></label>
+        <textarea class="field__input field__input--mono" id="lora_modules" name="lora_modules" rows="2"
+                  placeholder="sql=/loras/sql_lora&#10;chat=/loras/chat_lora"></textarea>
+        <p class="field__hint">Each line becomes one <code>--lora-modules</code> entry.</p>
       </div>
     </div>
+  </details>
 
-    <div class="field-row">
-      <label class="toggle">
-        <input type="checkbox" id="generation_config_vllm" name="generation_config_vllm" checked />
-        <span class="toggle__visual"></span>
-        <span class="toggle__text">Use vLLM generation config defaults
-          <span class="toggle__hint">Avoids surprise from HF generation defaults.</span>
-        </span>
-      </label>
+  <!-- 5. Speculative decoding (Advanced) -->
+  <details class="acc adv-only">
+    <summary class="acc__summary">
+      <span class="acc__num">5</span>
+      <span class="acc__title">Speculative decoding</span>
+      <span class="acc__sub">draft model, MTP, EAGLE3, n-gram, suffix</span>
+      <span class="acc__chev" aria-hidden="true"></span>
+    </summary>
+    <div class="acc__body">
+      <div class="field-row field-row--two">
+        <div class="field">
+          <label class="field__label" for="speculative_method">Method</label>
+          <select class="field__input" id="speculative_method" name="speculative_method">
+            <option value="none">none</option>
+            <option value="ngram">ngram (no draft model)</option>
+            <option value="suffix">suffix (no draft model)</option>
+            <option value="draft_model">draft_model</option>
+            <option value="mtp">mtp</option>
+            <option value="eagle3">eagle3</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field__label" for="num_speculative_tokens">Num speculative tokens <span class="field__optional">optional</span></label>
+          <input class="field__input" type="number" min="1" max="64" step="1"
+                 id="num_speculative_tokens" name="num_speculative_tokens" placeholder="5" />
+        </div>
+      </div>
+      <div class="field" id="speculative-model-field" hidden>
+        <label class="field__label" for="speculative_model">Draft / EAGLE / MTP model id</label>
+        <input class="field__input" type="text" id="speculative_model" name="speculative_model"
+               placeholder="e.g. meta-llama/Llama-3.2-1B-Instruct" />
+        <p class="field__hint">Required for <code>draft_model</code>, <code>mtp</code>, and <code>eagle3</code>.</p>
+      </div>
     </div>
+  </details>
 
-    <div class="field-row">
-      <label class="toggle">
-        <input type="checkbox" id="api_key_required" name="api_key_required" />
-        <span class="toggle__visual"></span>
-        <span class="toggle__text">Require API key
-          <span class="toggle__hint">Adds <code>--api-key ${VLLM_API_KEY}</code>.</span>
-        </span>
-      </label>
+  <!-- 6. Tools, reasoning & chat (Advanced) -->
+  <details class="acc adv-only">
+    <summary class="acc__summary">
+      <span class="acc__num">6</span>
+      <span class="acc__title">Tools, reasoning &amp; chat</span>
+      <span class="acc__sub">tool-call parser, reasoning parser, chat template</span>
+      <span class="acc__chev" aria-hidden="true"></span>
+    </summary>
+    <div class="acc__body">
+      <div class="field-row">
+        <label class="toggle">
+          <input type="checkbox" id="enable_auto_tool_choice" name="enable_auto_tool_choice" />
+          <span class="toggle__visual"></span>
+          <span class="toggle__text">Enable auto tool choice
+            <span class="toggle__hint">OpenAI-style <code>tool_choice="auto"</code>.</span>
+          </span>
+        </label>
+      </div>
+      <div class="field-row field-row--two">
+        <div class="field">
+          <label class="field__label" for="tool_call_parser">Tool-call parser</label>
+          <select class="field__input" id="tool_call_parser" name="tool_call_parser">
+            <option value="">(none)</option>
+            <option value="hermes">hermes</option>
+            <option value="mistral">mistral</option>
+            <option value="llama3_json">llama3_json</option>
+            <option value="pythonic">pythonic</option>
+            <option value="granite">granite</option>
+            <option value="jamba">jamba</option>
+            <option value="internlm">internlm</option>
+            <option value="glm45">glm45</option>
+            <option value="kimi_k2">kimi_k2</option>
+            <option value="qwen3_coder">qwen3_coder</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field__label" for="reasoning_parser">Reasoning parser</label>
+          <select class="field__input" id="reasoning_parser" name="reasoning_parser">
+            <option value="">(none)</option>
+            <option value="deepseek_r1">deepseek_r1</option>
+            <option value="granite">granite</option>
+            <option value="qwen3">qwen3</option>
+            <option value="minimax_m1">minimax_m1</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label class="field__label" for="chat_template">Chat template path <span class="field__optional">optional</span></label>
+        <input class="field__input" type="text" id="chat_template" name="chat_template"
+               placeholder="/templates/chatml.jinja" />
+        <p class="field__hint">Path inside the container. Mount the file as a volume.</p>
+      </div>
     </div>
+  </details>
 
-    <div class="field">
-      <label class="field__label" for="image_tag">vLLM image tag</label>
-      <input class="field__input" type="text" id="image_tag" name="image_tag"
-             value="vllm/vllm-openai:latest" />
-      <p class="field__hint">Pin to a specific tag (e.g. <code>vllm/vllm-openai:v0.11.0</code>) for reproducibility.</p>
+  <!-- 7. API server & logging (Advanced) -->
+  <details class="acc adv-only">
+    <summary class="acc__summary">
+      <span class="acc__num">7</span>
+      <span class="acc__title">API server &amp; logging</span>
+      <span class="acc__sub">api-key, CORS, log requests</span>
+      <span class="acc__chev" aria-hidden="true"></span>
+    </summary>
+    <div class="acc__body">
+      <div class="field-row">
+        <label class="toggle">
+          <input type="checkbox" id="api_key_required" name="api_key_required" />
+          <span class="toggle__visual"></span>
+          <span class="toggle__text">Require API key
+            <span class="toggle__hint">Adds <code>--api-key ${VLLM_API_KEY}</code>.</span>
+          </span>
+        </label>
+      </div>
+      <div class="field">
+        <label class="field__label" for="allowed_origins">Allowed origins (CORS) <span class="field__optional">optional</span></label>
+        <input class="field__input" type="text" id="allowed_origins" name="allowed_origins"
+               placeholder="https://app.example.com,https://other.com" />
+        <p class="field__hint">Comma-separated. Leave blank to disable CORS.</p>
+      </div>
+      <div class="field-row field-row--two">
+        <div class="field">
+          <label class="toggle">
+            <input type="checkbox" id="enable_log_requests" name="enable_log_requests" />
+            <span class="toggle__visual"></span>
+            <span class="toggle__text">Log requests
+              <span class="toggle__hint">One log line per HTTP request.</span>
+            </span>
+          </label>
+        </div>
+        <div class="field">
+          <label class="field__label" for="max_log_len">Max log length <span class="field__optional">optional</span></label>
+          <input class="field__input" type="number" min="10" max="1000000" step="1"
+                 id="max_log_len" name="max_log_len" placeholder="auto" />
+        </div>
+      </div>
     </div>
+  </details>
 
-    <div class="field">
-      <label class="field__label" for="extra_flags">Extra raw flags <span class="field__optional">optional</span></label>
-      <textarea class="field__input field__input--mono" id="extra_flags" name="extra_flags" rows="2"
-                placeholder="--swap-space 8 --seed 42"></textarea>
-      <p class="field__hint">Appended verbatim to the <code>vllm serve</code> command.</p>
+  <!-- 8. Loading & distribution (Advanced) -->
+  <details class="acc adv-only">
+    <summary class="acc__summary">
+      <span class="acc__num">8</span>
+      <span class="acc__title">Loading &amp; distribution</span>
+      <span class="acc__sub">tokenizer, revision, data parallel, executor backend</span>
+      <span class="acc__chev" aria-hidden="true"></span>
+    </summary>
+    <div class="acc__body">
+      <div class="field-row field-row--two">
+        <div class="field">
+          <label class="field__label" for="tokenizer">Tokenizer override <span class="field__optional">optional</span></label>
+          <input class="field__input" type="text" id="tokenizer" name="tokenizer"
+                 placeholder="e.g. meta-llama/Llama-3.1-8B-Instruct" />
+          <p class="field__hint">Useful for GGUF and untokenized weights.</p>
+        </div>
+        <div class="field">
+          <label class="field__label" for="revision">Model revision <span class="field__optional">optional</span></label>
+          <input class="field__input" type="text" id="revision" name="revision"
+                 placeholder="main, sha, or tag" />
+        </div>
+      </div>
+      <div class="field-row field-row--two">
+        <div class="field">
+          <label class="field__label" for="download_dir">Download dir <span class="field__optional">optional</span></label>
+          <input class="field__input" type="text" id="download_dir" name="download_dir"
+                 placeholder="/root/.cache/huggingface" />
+        </div>
+        <div class="field">
+          <label class="field__label" for="load_format">Load format</label>
+          <select class="field__input" id="load_format" name="load_format">
+            <option value="auto">auto</option>
+            <option value="safetensors">safetensors</option>
+            <option value="pt">pt</option>
+            <option value="bitsandbytes">bitsandbytes</option>
+            <option value="gguf">gguf</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row field-row--two">
+        <div class="field">
+          <label class="field__label" for="data_parallel_size">Data parallel size <span class="field__optional">optional</span></label>
+          <input class="field__input" type="number" min="1" max="64" step="1"
+                 id="data_parallel_size" name="data_parallel_size" placeholder="1" />
+        </div>
+        <div class="field">
+          <label class="field__label" for="distributed_executor_backend">Executor backend</label>
+          <select class="field__input" id="distributed_executor_backend" name="distributed_executor_backend">
+            <option value="auto">auto</option>
+            <option value="mp">mp</option>
+            <option value="ray">ray</option>
+            <option value="external_launcher">external_launcher</option>
+          </select>
+        </div>
+      </div>
     </div>
-  </div>
+  </details>
+
+  <!-- 9. Multimodal & raw (Advanced) -->
+  <details class="acc adv-only">
+    <summary class="acc__summary">
+      <span class="acc__num">9</span>
+      <span class="acc__title">Multimodal, image &amp; raw</span>
+      <span class="acc__sub">limit-mm-per-prompt, image tag, generation config, extras</span>
+      <span class="acc__chev" aria-hidden="true"></span>
+    </summary>
+    <div class="acc__body">
+      <div class="field">
+        <label class="field__label" for="limit_mm_per_prompt">Multimodal limits <span class="field__optional">optional</span></label>
+        <input class="field__input" type="text" id="limit_mm_per_prompt" name="limit_mm_per_prompt"
+               placeholder="image=4,video=1" />
+        <p class="field__hint">Caps inputs per request for multimodal models.</p>
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="image_tag">vLLM image tag</label>
+        <input class="field__input" type="text" id="image_tag" name="image_tag"
+               value="vllm/vllm-openai:latest" />
+        <p class="field__hint">Pin to a specific tag (e.g. <code>vllm/vllm-openai:v0.11.0</code>) for reproducibility.</p>
+      </div>
+
+      <div class="field-row">
+        <label class="toggle">
+          <input type="checkbox" id="generation_config_vllm" name="generation_config_vllm" checked />
+          <span class="toggle__visual"></span>
+          <span class="toggle__text">Use vLLM generation defaults
+            <span class="toggle__hint">Avoids surprise from HF generation defaults.</span>
+          </span>
+        </label>
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="extra_flags">Extra raw flags <span class="field__optional">optional</span></label>
+        <textarea class="field__input field__input--mono" id="extra_flags" name="extra_flags" rows="2"
+                  placeholder="--swap-space 8 --seed 42"></textarea>
+        <p class="field__hint">Appended verbatim to the <code>vllm serve</code> command.</p>
+      </div>
+    </div>
+  </details>
 </section>

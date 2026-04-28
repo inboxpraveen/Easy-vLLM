@@ -1,14 +1,55 @@
+<div align="center">
+
 # Easy-vLLM
 
-**Run vLLM without memorizing every vLLM flag.**
+**The fastest way to ship a [vLLM](https://github.com/vllm-project/vllm) deployment without memorizing every CLI flag.**
 
-Easy-vLLM is a simple web UI that generates ready-to-run vLLM Docker deployments. Choose your model, GPU count, memory budget, context length, quantization mode, and model config. easy-vLLM then generates Docker Compose files, optional Dockerfiles, environment files, OpenAI-compatible test clients, curl examples, and a deployment guide.
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![Flask](https://img.shields.io/badge/Flask-3-black.svg)](https://flask.palletsprojects.com/)
+[![vLLM](https://img.shields.io/badge/vLLM-friendly-7c5cff.svg)](https://github.com/vllm-project/vllm)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-The goal is simple: make vLLM easier for everyone.
+A small, beautiful Flask web app that walks you through a 3-step wizard, estimates GPU memory fit live, and outputs production-grade vLLM deployment artifacts (CLI command, `docker-compose.yml`, test clients, downloadable zip). Every deployment is saved locally so you can revisit, copy, or duplicate it later.
 
-vLLM is already one of the best open-source engines for high-throughput LLM inference and serving. Easy-vLLM does not replace it. Instead, it helps more people use it correctly by removing deployment confusion, GPU memory guesswork, and command-line trial and error.
+<img src="assets/application-ui/Main-Page.png" alt="Main Page">
 
-## Run it locally
+</div>
+
+---
+
+## Why Easy-vLLM?
+
+vLLM is one of the best open-source engines for high-throughput LLM serving, but its CLI exposes 100+ flags. Most beginners (and many experienced engineers) get stuck guessing tensor-parallel size, KV-cache dtype, max-model-len, quantization, or how much VRAM their model will actually need.
+
+**Easy-vLLM removes that guesswork.** You answer 3 short questions, see a live memory verdict (Good / Risky / Likely-OOM), and walk away with a copy-pasteable `vllm serve` command and a `docker compose up -d`-ready folder.
+
+> Easy-vLLM is a community helper. It does not fork or replace vLLM; it generates safer configurations for it.
+
+## How it works in 3 steps
+
+```mermaid
+flowchart LR
+  A["1. Tell us your model & hardware"] --> B["2. We pick safe vLLM defaults"]
+  B --> C["3. Get ready-to-run artifacts"]
+  C -->|"Saved locally"| D[(SQLite history)]
+  D --> A
+```
+
+1. **Tell us your model & hardware** - paste a Hugging Face ID (or local path), drop the model's `config.json` for accurate sizing, pick your GPU and workload.
+2. **We pick safe vLLM defaults** - a live circular gauge tells you if it fits, an ordered fix list shows exactly what to lower, and the `vllm serve` command updates as you type.
+3. **Get ready-to-run artifacts** - one tabbed view with the CLI command, polished `docker-compose.yml`, test clients, and a zip download. Every generated deployment is automatically saved to a local SQLite history.
+
+## Application UI
+
+<img src="assets/application-ui/Main-Page-Light.png" alt="Main Page Light Theme">
+
+<img src="assets/application-ui/New-Deployment.png" alt="New Deployment">
+
+<img src="assets/application-ui/Deployed.png" alt="Final Deployment Output">
+
+<img src="assets/application-ui/Deployed-on-Docker.png" alt="Final Deployment on Docker">
+
+## Quick start
 
 ```bash
 # 1. Install dependencies (Python 3.10+).
@@ -21,84 +62,72 @@ python app.py
 # http://localhost:5000
 ```
 
+That is it. The first generated deployment also creates the local history database under `instance/easy_vllm.db` so you do not need to set anything up.
+
 Optional: run the test suite.
 
 ```bash
 pytest -q
 ```
 
-## How to use
+## Feature tour
 
-1. **Step 1 - Model**: enter a Hugging Face model ID (e.g. `Qwen/Qwen3-8B-Instruct`) or a local path. Drag-drop the model's `config.json` for an accurate memory estimate. For MoE / multimodal models, also enter an approximate parameter count.
-2. **Step 2 - Hardware & workload**: pick a GPU preset (RTX 4090, A100, H100, ...), how many GPUs you have, your expected input/output token sizes, and how many concurrent requests you need to support.
-3. **Step 3 - Optimize**: pick precision and quantization (AWQ / GPTQ / FP8 / BitsAndBytes / GGUF). Toggle **Advanced** for full KV-cache, batching, image-tag, and raw-flag controls.
+### Hero & history
+- A clean landing page that explains the project in three plain-English steps.
+- A "Recent deployments" grid: each card shows the model, GPU preset, quantization, VRAM verdict, and how long ago you generated it. Click any card to jump straight to the artifacts view.
 
-A live panel on the right shows you a memory-fit gauge (Good / Risky / Likely-OOM), a per-component breakdown (weights, KV cache, runtime overhead), color-coded warnings, ordered fixes, and a live preview of the `vllm serve` command.
+### Three-step wizard
+- **Step 1 - Model**: HF ID or local path, served-model-name auto-derive, drag-drop `config.json` parser (handles dense, MoE, and multimodal models with confidence flags).
+- **Step 2 - Hardware**: GPU preset dropdown (RTX 3090 → H200, B200, MI300X), VRAM, count, tensor-parallel, pipeline-parallel, GPU utilization slider, expected input/output tokens, max concurrent requests.
+- **Step 3 - Optimize**: 9 collapsible sections covering precision, KV cache, scheduling, LoRA, speculative decoding, tools/reasoning/chat, API server, loading & distribution, and multimodal limits.
 
-When you're happy, click **Generate deployment** to download a zip containing:
+### Live memory estimator (right-hand panel)
+- Color-coded circular gauge (green / amber / red) with count-up animation.
+- Per-component breakdown: weights, KV cache, runtime overhead.
+- Ordered fix suggestions when fit is Risky / Likely-OOM.
+- Live preview of the `vllm serve` command, with copy.
 
-```
-easy-vllm-output/
-  docker-compose.yml      # single-service vLLM deployment
-  .env                    # ports, HF_TOKEN, paths, image tag
-  test_client.py          # OpenAI Python client smoke test
-  test_curl.sh            # curl smoke test
-  README.md               # how-to run + memory verdict
-  config_summary.json     # the wizard answers, for reproducibility
-```
+### Tabbed artifacts view
+After you click **Generate deployment**, the wizard hands off to an artifacts view with four tabs:
 
-Then:
+| Tab | Contents |
+|---|---|
+| Command line | Multi-line and one-line `vllm serve ...` |
+| Docker | `docker-compose.yml` and `.env`, ready to copy |
+| Test client | `test_client.py` (OpenAI Python) and `test_curl.sh` |
+| Zip & README | Generated `README.md` preview + a single zip download |
 
-```bash
-unzip easy-vllm-*.zip && cd easy-vllm-output
-docker compose up -d
-docker compose logs -f vllm
-python test_client.py
-```
+You can also **Duplicate & edit** any past deployment to reuse all its settings without retyping anything.
 
-## Project structure
+### vLLM options coverage
 
-```
-.
-├── app.py                       # Flask entrypoint
-├── requirements.txt
-├── easy_vllm/
-│   ├── schemas.py               # Pydantic models
-│   ├── gpu_presets.py           # GPU dropdown list
-│   ├── config_parser.py         # parse HF config.json
-│   ├── memory_estimator.py      # weights + KV cache + verdict
-│   ├── command_builder.py       # vllm serve arg builder
-│   ├── validators.py            # cross-field warnings
-│   ├── docker_generator.py      # render artifact templates
-│   ├── zip_exporter.py          # bundle artifacts to .zip
-│   └── routes.py                # Flask routes
-├── templates/
-│   ├── base.html
-│   ├── index.html
-│   ├── _step_model.html
-│   ├── _step_hardware.html
-│   ├── _step_optimization.html
-│   ├── _live_panel.html
-│   ├── _result.html
-│   └── artifacts/               # Jinja2 templates for generated files
-├── static/
-│   ├── css/styles.css           # dark + light themes, animations
-│   ├── js/app.js                # wizard, live estimator, drag-drop
-│   └── img/logo.svg
-└── tests/                       # pytest suite (29 tests)
-```
+| Category | Simple | Advanced |
+|---|---|---|
+| Identity | model id, served name, host, port | tokenizer, revision, download dir |
+| Precision | dtype, quantization | enforce-eager, prefix caching, chunked prefill |
+| KV cache | - | kv-cache-dtype, cpu-offload-gb, swap-space, sliding-window, cascade-attn, seed |
+| Scheduling | max-num-seqs, max-model-len | max-num-batched-tokens, scheduling-policy, async-scheduling, partial-prefills, long-prefill threshold |
+| Parallelism | tensor-parallel | pipeline-parallel, data-parallel, distributed-executor-backend |
+| LoRA | - | enable-lora, max-loras, max-lora-rank, lora-modules |
+| Speculative | - | method (ngram, suffix, draft_model, mtp, eagle3), draft model, num-speculative-tokens |
+| Tools & chat | - | enable-auto-tool-choice, tool-call-parser, reasoning-parser, chat-template |
+| API & logs | api-key | allowed-origins, enable-log-requests, max-log-len |
+| Multimodal | - | limit-mm-per-prompt |
+| Image | image tag, generation-config | extra raw flags passthrough |
+
+## Architecture
+
+<img src="assets/application-ui/Architecture.png" alt="Architecture Diagram">
 
 ## Memory estimator math
 
-Per GPU:
+Per GPU, with `tp` = tensor-parallel and `pp` = pipeline-parallel:
 
-- `weight_gb = (params * bytes_per_weight * 1.15) / 1024^3 / (tp_size * pp_size)`
+- `weight_gb = (params * bytes_per_weight * 1.15) / 1024^3 / (tp * pp)`
 - `kv_bytes_per_token = 2 * num_layers * ceil(kv_heads / tp) * head_dim * kv_dtype_bytes`
 - `kv_cache_gb = kv_bytes_per_token * (input_tokens + output_tokens) * max_num_seqs / 1024^3`
 - `required = weight_gb + kv_cache_gb + 2 GiB runtime`
-- `usable = gpu_total_gb * gpu_memory_utilization`
-
-Verdict:
+- `usable = gpu_total_gb * gpu_memory_utilization (+ cpu_offload_gb)`
 
 | Total / Usable | Status |
 |---|---|
@@ -106,30 +135,83 @@ Verdict:
 | 85 % - 100 % | Risky |
 | > 100 % | Likely OOM |
 
-The estimate is intentionally rough - vLLM profiles memory at startup and the real footprint also depends on CUDA graphs, kernels, fragmentation, and activations. It's accurate enough to catch most OOM disasters before deployment.
+The estimate is intentionally rough - vLLM profiles memory at startup and the real number also depends on CUDA graphs, kernels, fragmentation, and activations - but it is accurate enough to catch obvious OOM disasters before deployment.
 
-## What's intentionally out of scope
+## Project structure
 
-- Running Docker from the web app (security risk - we only generate files).
-- Multi-node Ray/NCCL deployments (we surface a warning if you ask for `pipeline-parallel-size > 1`).
-- Kubernetes manifests, benchmark runners, GPU auto-detection - tracked as future work.
+```
+.
+├── app.py                       # Flask entrypoint + DB init
+├── requirements.txt
+├── easy_vllm/
+│   ├── schemas.py               # Pydantic request/response models
+│   ├── gpu_presets.py           # GPU dropdown list
+│   ├── config_parser.py         # parse HF config.json
+│   ├── memory_estimator.py      # weights + KV cache + verdict + suggestions
+│   ├── command_builder.py       # vllm serve arg builder
+│   ├── validators.py            # cross-field warnings
+│   ├── docker_generator.py      # render artifact templates
+│   ├── zip_exporter.py          # bundle artifacts to .zip
+│   ├── storage.py               # SQLite-backed deployment history
+│   └── routes.py                # Flask routes + JSON API
+├── templates/
+│   ├── base.html
+│   ├── index.html               # Single page, three views
+│   ├── _hero.html               # Landing + history grid
+│   ├── _step_model.html
+│   ├── _step_hardware.html
+│   ├── _step_optimization.html  # 9 accordion sections
+│   ├── _live_panel.html         # Live memory gauge & command
+│   ├── _artifacts.html          # Tabbed artifacts view
+│   └── artifacts/               # Jinja2 templates for generated files
+├── static/
+│   ├── css/styles.css
+│   ├── js/app.js                # Hash router, wizard, history, tabs
+│   └── img/logo.svg
+└── tests/                       # pytest suite
+```
 
-## Why Easy-vLLM?
+## API reference
 
-vLLM is one of the most powerful open-source engines for high-throughput LLM inference and serving. It gives developers access to production-grade features like OpenAI-compatible APIs, efficient GPU memory management, batching, quantization, Hugging Face model support, and Docker-based deployment. However, for many beginners, students, solo builders, and even backend developers, getting the right vLLM command can still be confusing. Users often need to understand GPU memory limits, model context length, tensor parallelism, quantization choices, Docker flags, CUDA compatibility, Hugging Face tokens, and API testing before they can run a single model successfully.
+All endpoints are JSON unless noted. Live in [easy_vllm/routes.py](easy_vllm/routes.py).
 
-Easy-vLLM exists to make that first successful deployment much easier. Instead of forcing users to manually guess vLLM flags, Easy-vLLM provides a simple UI where they can select the model, upload the model config, choose GPU and memory settings, define input and output token limits, and generate a ready-to-run Docker Compose project. The goal is not to replace vLLM. The goal is to make vLLM more approachable, searchable, explainable, and usable for everyone who wants to self-host open-source LLMs.
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/` | Render the single-page app |
+| GET | `/api/gpu-presets` | List GPU presets |
+| POST | `/api/parse-config` | Multipart upload of HF `config.json` |
+| POST | `/api/estimate` | Live memory estimate + warnings + command |
+| POST | `/api/generate` | Render artifacts, save to SQLite, return record |
+| GET | `/api/deployments` | List saved deployments (newest first) |
+| GET | `/api/deployments/<id>` | Full deployment record + artifacts |
+| GET | `/api/deployments/<id>/zip` | Download zip of artifacts |
+| DELETE | `/api/deployments/<id>` | Remove from history |
 
-## Credits and attribution
+## FAQ
 
-Easy-vLLM is a community helper project built around the amazing work of the vLLM project.
+**Where is my history stored?**
+In a SQLite file at `instance/easy_vllm.db`. The `instance/` folder is in `.gitignore`. You can override the path with the `EASY_VLLM_DB` environment variable.
 
-vLLM is the actual inference and serving engine used for high-throughput LLM serving. easy-vLLM does not replace vLLM, fork vLLM, or claim ownership of vLLM. This project simply helps users generate safer and easier deployment configurations for running vLLM with Docker, Docker Compose, GPU settings, model configuration, quantization choices, and OpenAI-compatible test clients.
+**Does Easy-vLLM run Docker for me?**
+No. By design, the app only generates files. Running them is your call - this keeps the security boundary clean.
 
-All credit for the vLLM engine, serving architecture, OpenAI-compatible server, PagedAttention, CUDA/ROCm support, quantization integrations, and core inference runtime belongs to the official vLLM project and its contributors.
+**Can I deploy gated Hugging Face models?**
+Yes. Toggle "Private / gated Hugging Face model" on Step 1; the generated `.env` will contain an `HF_TOKEN` slot.
 
-Official vLLM project:
-https://github.com/vllm-project/vllm
+**My model is MoE / multimodal - the estimator says "uncertain". Why?**
+The dense-decoder approximation `12 * L * H^2 + V * H` undercounts MoE expert weights and vision/audio towers. Type the actual parameter count in the "Approximate parameter count" field; the estimate becomes accurate.
 
-Official vLLM documentation:
-https://docs.vllm.ai/
+**Can I edit a past deployment in place?**
+We chose **Duplicate & edit** instead of in-place editing - the original stays intact while you tweak a copy. Click the button on any artifacts view.
+
+**Does Easy-vLLM support multi-node?**
+Pipeline-parallel and Ray are exposed in the wizard, but the generated `docker-compose.yml` targets a single host. Multi-node Ray/NCCL setup is up to you - the wizard surfaces a warning when you ask for `pipeline-parallel-size > 1`.
+
+## Credits
+
+Easy-vLLM is a community helper project built on top of the amazing [vLLM](https://github.com/vllm-project/vllm) project. All credit for vLLM's engine, OpenAI-compatible server, PagedAttention, CUDA/ROCm support, quantization integrations, and core inference runtime belongs to the official vLLM project and its contributors.
+
+- vLLM source: <https://github.com/vllm-project/vllm>
+- vLLM docs: <https://docs.vllm.ai/>
+
+Easy-vLLM is licensed under the MIT license. See [LICENSE](LICENSE).

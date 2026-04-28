@@ -1,0 +1,124 @@
+<section class="artifacts" id="artifacts-view" aria-label="Generated deployment artifacts">
+  <header class="artifacts__head">
+    <div class="artifacts__title-row">
+      <a class="btn btn--ghost btn--sm" href="#home" data-route="home">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+        Back
+      </a>
+      <h2 class="artifacts__title" id="artifacts-name">deployment</h2>
+      <span class="artifacts__badge" id="artifacts-fit"></span>
+    </div>
+    <div class="artifacts__meta" id="artifacts-meta"></div>
+    <div class="artifacts__actions">
+      <button type="button" class="btn btn--primary" id="artifacts-download">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download zip
+      </button>
+      <button type="button" class="btn btn--ghost" id="artifacts-duplicate">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Duplicate &amp; edit
+      </button>
+      <button type="button" class="btn btn--ghost btn--danger-soft" id="artifacts-delete">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
+        Delete
+      </button>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Artifacts">
+    <button class="tab is-active" role="tab" data-tab="cli" aria-selected="true">Command line</button>
+    <button class="tab" role="tab" data-tab="docker" aria-selected="false">Docker</button>
+    <button class="tab" role="tab" data-tab="tests" aria-selected="false">Test client</button>
+    <button class="tab" role="tab" data-tab="zip" aria-selected="false">Zip &amp; README</button>
+  </nav>
+
+  <div class="tab-panels">
+    <article class="tab-panel is-active" data-panel="cli" role="tabpanel">
+      <div class="codecard">
+        <div class="codecard__head">
+          <span class="codecard__file"><code>vllm serve</code></span>
+          <button class="btn-copy" type="button" data-copy-target="art-cli-multi">copy</button>
+        </div>
+        <pre class="codecard__pre"><code id="art-cli-multi">vllm serve ...</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="codecard__head">
+          <span class="codecard__file">One-line variant</span>
+          <button class="btn-copy" type="button" data-copy-target="art-cli-one">copy</button>
+        </div>
+        <pre class="codecard__pre codecard__pre--soft"><code id="art-cli-one">vllm serve ...</code></pre>
+      </div>
+      <p class="codecard__hint">
+        Run on any machine with vLLM installed:
+        <code>pip install vllm</code> then paste the command above.
+      </p>
+    </article>
+
+    <article class="tab-panel" data-panel="docker" role="tabpanel" hidden>
+      <div class="codecard">
+        <div class="codecard__head">
+          <span class="codecard__file"><code>docker-compose.yml</code></span>
+          <button class="btn-copy" type="button" data-copy-target="art-compose">copy</button>
+        </div>
+        <pre class="codecard__pre"><code id="art-compose"></code></pre>
+      </div>
+      <div class="codecard">
+        <div class="codecard__head">
+          <span class="codecard__file"><code>.env</code></span>
+          <button class="btn-copy" type="button" data-copy-target="art-env">copy</button>
+        </div>
+        <pre class="codecard__pre codecard__pre--soft"><code id="art-env"></code></pre>
+      </div>
+      <p class="codecard__hint">
+        Save both files in the same folder, then run
+        <code>docker compose up -d</code>.
+      </p>
+    </article>
+
+    <article class="tab-panel" data-panel="tests" role="tabpanel" hidden>
+      <div class="codecard">
+        <div class="codecard__head">
+          <span class="codecard__file"><code>test_client.py</code></span>
+          <button class="btn-copy" type="button" data-copy-target="art-client">copy</button>
+        </div>
+        <pre class="codecard__pre"><code id="art-client"></code></pre>
+      </div>
+      <div class="codecard">
+        <div class="codecard__head">
+          <span class="codecard__file"><code>test_curl.sh</code></span>
+          <button class="btn-copy" type="button" data-copy-target="art-curl">copy</button>
+        </div>
+        <pre class="codecard__pre codecard__pre--soft"><code id="art-curl"></code></pre>
+      </div>
+    </article>
+
+    <article class="tab-panel" data-panel="zip" role="tabpanel" hidden>
+      <div class="zip-card">
+        <div class="zip-card__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </div>
+        <div class="zip-card__body">
+          <h3>Download the full deployment</h3>
+          <p>
+            Six files bundled into a single zip:
+            <code>docker-compose.yml</code>, <code>.env</code>,
+            <code>test_client.py</code>, <code>test_curl.sh</code>,
+            <code>README.md</code>, <code>config_summary.json</code>.
+          </p>
+          <button type="button" class="btn btn--primary" id="zip-download">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download zip
+          </button>
+        </div>
+      </div>
+
+      <div class="codecard">
+        <div class="codecard__head">
+          <span class="codecard__file"><code>README.md</code></span>
+          <button class="btn-copy" type="button" data-copy-target="art-readme">copy</button>
+        </div>
+        <pre class="codecard__pre"><code id="art-readme"></code></pre>
+      </div>
+    </article>
+  </div>
+</section>

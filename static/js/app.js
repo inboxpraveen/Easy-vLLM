@@ -1,5 +1,9 @@
 /* easy-vLLM front-end logic.
  * Vanilla JS, no framework. Talks to /api/* endpoints.
+ *
+ * Architecture: a single page with three views (home, new, deployment),
+ * routed by URL hash. Wizard state lives in the form; deployment artifacts
+ * are fetched on demand and cached in `lastDeployment` for tab rendering.
  */
 
 (function () {
@@ -11,18 +15,58 @@
   // -------------------------------------------------------------------------
   // Theme toggle
   // -------------------------------------------------------------------------
-  const themeToggle = $("#theme-toggle");
-  if (themeToggle) {
-    themeToggle.addEventListener("click", () => {
-      const root = document.documentElement;
-      const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
-      root.setAttribute("data-theme", next);
-      try { localStorage.setItem("easy-vllm-theme", next); } catch (e) {}
-    });
-  }
+  $("#theme-toggle")?.addEventListener("click", () => {
+    const root = document.documentElement;
+    const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("easy-vllm-theme", next); } catch (e) {}
+  });
 
   // -------------------------------------------------------------------------
-  // GPU preset dropdown population
+  // Hash router
+  // -------------------------------------------------------------------------
+  const VIEWS = ["home", "new", "deployment"];
+
+  function parseHash() {
+    const raw = (location.hash || "#home").replace(/^#/, "");
+    const [route, id] = raw.split("/");
+    return { route: VIEWS.includes(route) ? route : "home", id: id || null };
+  }
+
+  function setHash(route, id) {
+    const next = id ? `#${route}/${id}` : `#${route}`;
+    if (location.hash !== next) location.hash = next;
+  }
+
+  function applyRoute() {
+    const { route, id } = parseHash();
+    $$(".view").forEach((el) => {
+      const isActive = el.dataset.view === route;
+      el.hidden = !isActive;
+      el.classList.toggle("is-active", isActive);
+    });
+    if (route === "deployment" && id) {
+      loadDeployment(id);
+    } else if (route === "home") {
+      loadHistory();
+    } else if (route === "new") {
+      // Make sure the form is in a useful state on every visit
+      requestEstimate();
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  window.addEventListener("hashchange", applyRoute);
+
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest("[data-route]");
+    if (!a) return;
+    e.preventDefault();
+    setHash(a.getAttribute("data-route"));
+  });
+
+  // -------------------------------------------------------------------------
+  // GPU presets
   // -------------------------------------------------------------------------
   const presetsRaw = $("#gpu-presets-data")?.textContent || "[]";
   let presets = [];
@@ -48,14 +92,16 @@
   }
 
   // -------------------------------------------------------------------------
-  // Wizard navigation
+  // Wizard navigation (single dynamic action button)
   // -------------------------------------------------------------------------
   const form    = $("#wizard-form");
   const steps   = $$(".step", form);
   const stepperItems = $$(".stepper__item");
   const btnPrev = $("#btn-prev");
-  const btnNext = $("#btn-next");
-  const btnGenerate = $("#btn-generate");
+  const btnAction = $("#btn-action");
+  const actionLabel = $(".btn-action__label", btnAction);
+  const iconNext = $(".btn-action__icon-next", btnAction);
+  const iconGen  = $(".btn-action__icon-gen", btnAction);
   let currentStep = 1;
   const TOTAL_STEPS = steps.length;
 
@@ -73,31 +119,33 @@
       el.classList.toggle("is-complete", idx < currentStep);
     });
     btnPrev.disabled = currentStep === 1;
-    if (currentStep === TOTAL_STEPS) {
-      btnNext.hidden = true;
-      btnGenerate.hidden = false;
-    } else {
-      btnNext.hidden = false;
-      btnGenerate.hidden = true;
-    }
-    form.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    // Single-button design: one dynamic primary action.
+    const isLast = currentStep === TOTAL_STEPS;
+    btnAction.dataset.mode = isLast ? "generate" : "next";
+    btnAction.classList.toggle("btn--generate", isLast);
+    actionLabel.textContent = isLast ? "Generate deployment" : "Next";
+    iconNext.hidden = isLast;
+    iconGen.hidden = !isLast;
   }
 
   btnPrev?.addEventListener("click", () => showStep(currentStep - 1));
-  btnNext?.addEventListener("click", () => showStep(currentStep + 1));
+  btnAction?.addEventListener("click", () => {
+    if (btnAction.dataset.mode === "generate") {
+      generateDeployment();
+    } else {
+      showStep(currentStep + 1);
+    }
+  });
 
-  // -------------------------------------------------------------------------
   // Mode (simple / advanced)
-  // -------------------------------------------------------------------------
   $$("input[name='ui_mode']").forEach((r) => {
     r.addEventListener("change", () => {
       form.classList.toggle("is-advanced", r.value === "advanced" && r.checked);
     });
   });
 
-  // -------------------------------------------------------------------------
   // Model source toggle
-  // -------------------------------------------------------------------------
   $$("input[name='model_source']").forEach((r) => {
     r.addEventListener("change", () => {
       const src = r.value;
@@ -108,7 +156,7 @@
     });
   });
 
-  // Auto-derive served_model_name from model_id
+  // Auto-derive served_model_name
   const modelIdInput = $("#model_id");
   const localPathInput = $("#local_model_path");
   const servedNameInput = $("#served_model_name");
@@ -126,9 +174,7 @@
   modelIdInput?.addEventListener("input", maybeDeriveServedName);
   localPathInput?.addEventListener("input", maybeDeriveServedName);
 
-  // -------------------------------------------------------------------------
-  // Slider live output + fill background
-  // -------------------------------------------------------------------------
+  // Slider live output
   const slider = $("#gpu_memory_utilization");
   const sliderOut = $("#gpu_memory_utilization_out");
   function updateSliderUi() {
@@ -144,19 +190,28 @@
   slider?.addEventListener("input", updateSliderUi);
   updateSliderUi();
 
-  // Auto-sync TP with GPU count when TP wasn't manually changed
+  // TP autosync with GPU count
   const gpuCountInput = $("#gpu_count");
   const tpInput = $("#tensor_parallel_size");
   let tpManuallyEdited = false;
   tpInput?.addEventListener("input", () => { tpManuallyEdited = true; });
   gpuCountInput?.addEventListener("input", () => {
-    if (!tpManuallyEdited && tpInput) {
-      tpInput.value = gpuCountInput.value;
-    }
+    if (!tpManuallyEdited && tpInput) tpInput.value = gpuCountInput.value;
   });
 
+  // Speculative model field visibility
+  const specMethod = $("#speculative_method");
+  const specModelField = $("#speculative-model-field");
+  function updateSpecModelVisibility() {
+    if (!specMethod || !specModelField) return;
+    const v = specMethod.value;
+    specModelField.hidden = !["draft_model", "mtp", "eagle3"].includes(v);
+  }
+  specMethod?.addEventListener("change", updateSpecModelVisibility);
+  updateSpecModelVisibility();
+
   // -------------------------------------------------------------------------
-  // Drag-and-drop config.json upload
+  // Drag-and-drop config.json
   // -------------------------------------------------------------------------
   const dropzone = $("#config-dropzone");
   const fileInput = $("#config-file-input");
@@ -196,10 +251,8 @@
     fields.forEach(([k, v]) => {
       if (v == null || v === "") return;
       const div = document.createElement("div");
-      const dt  = document.createElement("dt");
-      dt.textContent = k;
-      const dd  = document.createElement("dd");
-      dd.textContent = String(v);
+      const dt = document.createElement("dt"); dt.textContent = k;
+      const dd = document.createElement("dd"); dd.textContent = String(v);
       div.appendChild(dt); div.appendChild(dd);
       configCardGrid.appendChild(div);
     });
@@ -265,6 +318,26 @@
   // -------------------------------------------------------------------------
   // Form -> JSON payload
   // -------------------------------------------------------------------------
+  const FLOAT_FIELDS = [
+    "gpu_memory_gb", "gpu_memory_utilization", "manual_param_count_b",
+    "cpu_offload_gb", "swap_space_gb",
+  ];
+  const INT_FIELDS = [
+    "gpu_count", "tensor_parallel_size", "pipeline_parallel_size",
+    "input_tokens", "output_tokens", "max_num_seqs", "max_num_batched_tokens",
+    "seed", "max_num_partial_prefills", "long_prefill_token_threshold",
+    "max_loras", "max_lora_rank", "num_speculative_tokens",
+    "max_log_len", "data_parallel_size",
+  ];
+  const CHECKBOX_FIELDS = [
+    "is_private_hf_model", "trust_remote_code",
+    "enable_prefix_caching", "enable_chunked_prefill", "enforce_eager",
+    "disable_sliding_window", "disable_cascade_attn",
+    "async_scheduling", "enable_lora", "enable_auto_tool_choice",
+    "api_key_required", "enable_log_requests",
+    "generation_config_vllm",
+  ];
+
   function readPayload() {
     const fd = new FormData(form);
     const obj = {};
@@ -272,24 +345,48 @@
       if (k === "ui_mode" || k === "config_info_json") continue;
       obj[k] = v;
     }
-    obj.is_private_hf_model = $("#is_private_hf_model").checked;
-    obj.trust_remote_code   = $("#trust_remote_code").checked;
-    obj.enable_prefix_caching = $("#enable_prefix_caching").checked;
-    obj.generation_config_vllm = $("#generation_config_vllm").checked;
-    obj.api_key_required    = $("#api_key_required").checked;
-
-    ["gpu_memory_gb","gpu_memory_utilization","manual_param_count_b","cpu_offload_gb"].forEach((k) => {
+    CHECKBOX_FIELDS.forEach((k) => {
+      const el = document.getElementById(k);
+      if (el) obj[k] = !!el.checked;
+    });
+    FLOAT_FIELDS.forEach((k) => {
       if (obj[k] === "" || obj[k] === undefined) delete obj[k];
       else obj[k] = parseFloat(obj[k]);
     });
-    ["gpu_count","tensor_parallel_size","pipeline_parallel_size",
-     "input_tokens","output_tokens","max_num_seqs","max_num_batched_tokens"].forEach((k) => {
+    INT_FIELDS.forEach((k) => {
       if (obj[k] === "" || obj[k] === undefined) delete obj[k];
       else obj[k] = parseInt(obj[k], 10);
     });
-
+    if (obj.tool_call_parser === "") delete obj.tool_call_parser;
+    if (obj.reasoning_parser === "") delete obj.reasoning_parser;
     if (parsedConfig) obj.config_info = parsedConfig;
     return obj;
+  }
+
+  function applyPayloadToForm(payload) {
+    if (!payload) return;
+    Object.keys(payload).forEach((k) => {
+      const el = document.getElementById(k);
+      if (!el) return;
+      if (el.type === "checkbox") {
+        el.checked = !!payload[k];
+      } else if (el.tagName === "SELECT" || el.tagName === "INPUT" || el.tagName === "TEXTAREA") {
+        if (payload[k] != null) el.value = payload[k];
+      }
+    });
+    // model source radio
+    if (payload.model_source) {
+      const radio = document.getElementById(payload.model_source === "local" ? "src-local" : "src-hf");
+      if (radio) {
+        radio.checked = true;
+        radio.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    }
+    if (payload.config_info) setParsedConfig(payload.config_info);
+    if (payload.served_model_name) servedManuallyEdited = true;
+    updateSliderUi();
+    updateSpecModelVisibility();
+    requestEstimate();
   }
 
   // -------------------------------------------------------------------------
@@ -312,7 +409,6 @@
   const suggestionsList = $("#suggestions-list");
 
   const GAUGE_CIRC = 2 * Math.PI * 52;
-
   let lastTimer = null;
   let inFlight = null;
 
@@ -331,16 +427,12 @@
           signal: ctrl?.signal,
         });
         if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          renderEstimateError(err);
+          renderEstimateError();
           return;
         }
-        const data = await res.json();
-        renderEstimate(data);
+        renderEstimate(await res.json());
       } catch (e) {
-        if (e.name !== "AbortError") {
-          renderEstimateError({ error: "network" });
-        }
+        if (e.name !== "AbortError") renderEstimateError();
       }
     }, 280);
   }
@@ -351,7 +443,6 @@
     livePulse?.classList.add("is-pulsing");
   }
 
-  // count-up animation for a number element
   function countUp(el, target) {
     if (!el) return;
     const from = parseFloat(el.textContent) || 0;
@@ -370,7 +461,6 @@
   function renderEstimate(data) {
     pulseLive();
     const m = data.memory;
-
     countUp(mWeight, m.weight_gb);
     countUp(mKv, m.kv_cache_gb);
     countUp(mRuntime, m.runtime_gb);
@@ -384,14 +474,10 @@
     gaugeFill.style.strokeDashoffset = offset;
     gaugePercent.textContent = (m.fit_status === "unknown") ? "--%" : Math.round(pct) + "%";
     gaugeLabel.textContent = ({
-      good: "good fit",
-      risky: "risky",
-      oom: "likely OOM",
-      unknown: "awaiting input",
+      good: "good fit", risky: "risky", oom: "likely OOM", unknown: "awaiting input",
     })[m.fit_status || "unknown"];
 
     cmdText.textContent = "vllm serve " + (data.vllm_command_oneline || "");
-
     renderWarnings(data.warnings || []);
     renderSuggestions(data.suggestions || []);
   }
@@ -430,43 +516,26 @@
     suggestionsEl.hidden = false;
     suggestions.forEach((s) => {
       const li = document.createElement("li");
-      const strong = document.createElement("strong");
-      strong.textContent = s.title;
-      const span = document.createElement("span");
-      span.textContent = s.detail;
+      const strong = document.createElement("strong"); strong.textContent = s.title;
+      const span = document.createElement("span"); span.textContent = s.detail;
       li.appendChild(strong); li.appendChild(span);
       suggestionsList.appendChild(li);
     });
   }
 
-  // Wire up form-wide change listeners
   form?.addEventListener("input", requestEstimate);
   form?.addEventListener("change", requestEstimate);
 
   // -------------------------------------------------------------------------
-  // Copy-to-clipboard buttons
+  // Generate -> save & switch to artifacts view
   // -------------------------------------------------------------------------
-  document.addEventListener("click", (e) => {
-    const btn = e.target.closest("[data-copy]");
-    if (!btn) return;
-    e.preventDefault();
-    const id = btn.getAttribute("data-copy");
-    const node = document.getElementById(id);
-    if (!node) return;
-    const text = node.innerText || node.textContent || "";
-    navigator.clipboard?.writeText(text).then(
-      () => toast("Copied to clipboard", "success"),
-      () => toast("Copy failed", "error")
-    );
-  });
+  let lastDeployment = null;
 
-  // -------------------------------------------------------------------------
-  // Generate -> zip download
-  // -------------------------------------------------------------------------
-  btnGenerate?.addEventListener("click", async () => {
-    btnGenerate.disabled = true;
-    const orig = btnGenerate.innerHTML;
-    btnGenerate.innerHTML = '<span class="spinner" style="width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;display:inline-block;animation:spin 700ms linear infinite;"></span> Generating...';
+  async function generateDeployment() {
+    if (btnAction.dataset.mode !== "generate") return;
+    const orig = btnAction.innerHTML;
+    btnAction.disabled = true;
+    btnAction.innerHTML = '<span class="spinner"></span><span>Generating...</span>';
     try {
       const payload = readPayload();
       const res = await fetch("/api/generate", {
@@ -484,39 +553,205 @@
         }
         return;
       }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = $("#download-zip");
-      a.href = url;
-      const cd = res.headers.get("Content-Disposition") || "";
-      const m = /filename="?([^"]+)"?/.exec(cd);
-      a.download = m ? m[1] : "easy-vllm-output.zip";
-      openModal();
-      a.click();
+      const data = await res.json();
+      lastDeployment = data;
+      renderDeployment(data);
+      setHash("deployment", data.id);
+      toast("Saved to history", "success");
     } catch (e) {
       toast("Network error during generation", "error");
     } finally {
-      btnGenerate.disabled = false;
-      btnGenerate.innerHTML = orig;
+      btnAction.disabled = false;
+      btnAction.innerHTML = orig;
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Deployment view: tabs + render
+  // -------------------------------------------------------------------------
+  const artName = $("#artifacts-name");
+  const artFit  = $("#artifacts-fit");
+  const artMeta = $("#artifacts-meta");
+  const cliMulti = $("#art-cli-multi");
+  const cliOne   = $("#art-cli-one");
+  const compose  = $("#art-compose");
+  const envCode  = $("#art-env");
+  const client   = $("#art-client");
+  const curl     = $("#art-curl");
+  const readme   = $("#art-readme");
+
+  function renderDeployment(data) {
+    if (!data) return;
+    artName.textContent = data.name || "deployment";
+    artFit.textContent = (data.fit_status || data.memory?.fit_status || "unknown").toUpperCase();
+    artFit.className = "artifacts__badge artifacts__badge--" + (data.fit_status || data.memory?.fit_status || "unknown");
+
+    artMeta.innerHTML = "";
+    const metaRows = [
+      ["Model", data.model_id || data.request?.model_id || data.request?.local_model_path || "-"],
+      ["GPU", `${data.gpu_preset || "-"} x${data.gpu_count || 1}`],
+      ["Quant", data.quantization || "none"],
+      ["VRAM used", data.memory?.percent_used != null ? `${Math.round(data.memory.percent_used)}%` : "-"],
+      ["Created", formatTime(data.created_at)],
+    ];
+    metaRows.forEach(([k, v]) => {
+      const span = document.createElement("span");
+      span.className = "artifacts__meta-pill";
+      span.innerHTML = `<em>${k}</em><strong>${escapeHtml(String(v))}</strong>`;
+      artMeta.appendChild(span);
+    });
+
+    const a = data.artifacts || {};
+    cliMulti.textContent = "vllm serve " + (data.command_multiline || "");
+    cliOne.textContent = "vllm serve " + (data.command_oneline || "");
+    compose.textContent = a["docker-compose.yml"] || "";
+    envCode.textContent = a[".env"] || "";
+    client.textContent = a["test_client.py"] || "";
+    curl.textContent = a["test_curl.sh"] || "";
+    readme.textContent = a["README.md"] || "";
+
+    $("#zip-download")?.setAttribute("data-id", data.id);
+    $("#artifacts-download")?.setAttribute("data-id", data.id);
+    $("#artifacts-duplicate")?.setAttribute("data-id", data.id);
+    $("#artifacts-delete")?.setAttribute("data-id", data.id);
+  }
+
+  $$(".tabs .tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      const target = tab.dataset.tab;
+      $$(".tabs .tab").forEach((t) => {
+        const active = t === tab;
+        t.classList.toggle("is-active", active);
+        t.setAttribute("aria-selected", String(active));
+      });
+      $$(".tab-panel").forEach((p) => {
+        const active = p.dataset.panel === target;
+        p.classList.toggle("is-active", active);
+        p.hidden = !active;
+      });
+    });
+  });
+
+  async function loadDeployment(id) {
+    if (lastDeployment && lastDeployment.id === id) {
+      renderDeployment(lastDeployment);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/deployments/${encodeURIComponent(id)}`);
+      if (!res.ok) {
+        toast("Deployment not found", "error");
+        setHash("home");
+        return;
+      }
+      const data = await res.json();
+      lastDeployment = {
+        ...data,
+        download_url: `/api/deployments/${data.id}/zip`,
+      };
+      renderDeployment(lastDeployment);
+    } catch (e) {
+      toast("Network error loading deployment", "error");
+      setHash("home");
+    }
+  }
+
+  function downloadZip(id) {
+    if (!id) return;
+    window.location.href = `/api/deployments/${encodeURIComponent(id)}/zip`;
+  }
+
+  $("#zip-download")?.addEventListener("click", (e) => {
+    downloadZip(e.currentTarget.getAttribute("data-id") || lastDeployment?.id);
+  });
+  $("#artifacts-download")?.addEventListener("click", (e) => {
+    downloadZip(e.currentTarget.getAttribute("data-id") || lastDeployment?.id);
+  });
+  $("#artifacts-duplicate")?.addEventListener("click", () => {
+    if (!lastDeployment?.request) return;
+    applyPayloadToForm(lastDeployment.request);
+    setHash("new");
+    showStep(1);
+    toast("Loaded into wizard. Edit anything, then Generate.", "success");
+  });
+  $("#artifacts-delete")?.addEventListener("click", async () => {
+    if (!lastDeployment?.id) return;
+    if (!confirm(`Delete "${lastDeployment.name}" from history?`)) return;
+    try {
+      const res = await fetch(`/api/deployments/${encodeURIComponent(lastDeployment.id)}`, { method: "DELETE" });
+      if (res.ok) {
+        toast("Deleted", "success");
+        lastDeployment = null;
+        setHash("home");
+      } else {
+        toast("Delete failed", "error");
+      }
+    } catch (e) {
+      toast("Network error", "error");
     }
   });
 
   // -------------------------------------------------------------------------
-  // Modal open/close
+  // History grid
   // -------------------------------------------------------------------------
-  const modal = $("#result-modal");
-  function openModal() { modal.hidden = false; document.body.style.overflow = "hidden"; }
-  function closeModal() { modal.hidden = true; document.body.style.overflow = ""; }
-  document.addEventListener("click", (e) => {
-    if (e.target.matches("[data-modal-close]")) closeModal();
-  });
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !modal.hidden) closeModal();
-  });
+  const historyGrid = $("#history-grid");
+  const historyEmpty = $("#history-empty");
+
+  async function loadHistory() {
+    if (!historyGrid) return;
+    try {
+      const res = await fetch("/api/deployments");
+      if (!res.ok) return;
+      const rows = await res.json();
+      historyGrid.innerHTML = "";
+      if (!rows.length) {
+        historyEmpty.hidden = false;
+        return;
+      }
+      historyEmpty.hidden = true;
+      rows.forEach((row) => historyGrid.appendChild(historyCard(row)));
+    } catch (e) {
+      // silent
+    }
+  }
+
+  function historyCard(row) {
+    const a = document.createElement("a");
+    a.className = "h-card h-card--" + (row.fit_status || "unknown");
+    a.href = `#deployment/${row.id}`;
+    a.innerHTML = `
+      <header class="h-card__head">
+        <span class="h-card__name">${escapeHtml(row.name || "deployment")}</span>
+        <span class="h-card__badge h-card__badge--${row.fit_status || "unknown"}">${(row.fit_status || "?").toUpperCase()}</span>
+      </header>
+      <p class="h-card__model"><code>${escapeHtml(row.model_id || "(no model id)")}</code></p>
+      <dl class="h-card__meta">
+        <div><dt>GPU</dt><dd>${escapeHtml(row.gpu_preset || "-")} x${row.gpu_count || 1}</dd></div>
+        <div><dt>Quant</dt><dd>${escapeHtml(row.quantization || "none")}</dd></div>
+        <div><dt>VRAM</dt><dd>${row.percent_used != null ? Math.round(row.percent_used) + "%" : "-"}</dd></div>
+        <div><dt>When</dt><dd>${escapeHtml(formatTime(row.created_at))}</dd></div>
+      </dl>
+    `;
+    return a;
+  }
 
   // -------------------------------------------------------------------------
-  // Toasts
+  // Copy / toast / utilities
   // -------------------------------------------------------------------------
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-copy], [data-copy-target]");
+    if (!btn) return;
+    e.preventDefault();
+    const id = btn.getAttribute("data-copy-target") || btn.getAttribute("data-copy");
+    const node = document.getElementById(id);
+    if (!node) return;
+    const text = node.innerText || node.textContent || "";
+    navigator.clipboard?.writeText(text).then(
+      () => toast("Copied to clipboard", "success"),
+      () => toast("Copy failed", "error")
+    );
+  });
+
   const toastStack = $("#toast-stack");
   function toast(msg, kind) {
     if (!toastStack) return;
@@ -532,6 +767,26 @@
     }, 2600);
   }
 
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function formatTime(iso) {
+    if (!iso) return "-";
+    try {
+      const d = new Date(iso);
+      const diff = (Date.now() - d.getTime()) / 1000;
+      if (diff < 60) return "just now";
+      if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+      if (diff < 86400 * 7) return `${Math.floor(diff / 86400)}d ago`;
+      return d.toLocaleDateString();
+    } catch (e) { return iso; }
+  }
+
   // -------------------------------------------------------------------------
   // Quantization hint
   // -------------------------------------------------------------------------
@@ -540,8 +795,8 @@
     awq:  "AWQ - 4-bit, NVIDIA-friendly. Use with a pre-quantized AWQ checkpoint.",
     gptq: "GPTQ - 4-bit, broad support. Use with a pre-quantized GPTQ checkpoint.",
     fp8:  "FP8 - excellent on Hopper / Ada / MI300X (~2x memory savings).",
-    bitsandbytes: "BitsAndBytes - simplest 4-bit. Image needs bitsandbytes installed (see README).",
-    gguf: "GGUF - llama.cpp-style files. Advanced; usually needs a tokenizer model id.",
+    bitsandbytes: "BitsAndBytes - simplest 4-bit. Image needs bitsandbytes installed.",
+    gguf: "GGUF - llama.cpp-style files. Usually needs a tokenizer model id.",
     marlin: "Marlin - optimized AWQ/GPTQ/FP8/FP4 kernels for newer NVIDIA GPUs.",
   };
   const quantSelect = $("#quantization");
@@ -550,12 +805,10 @@
     quantHint.textContent = QUANT_HINTS[quantSelect.value] || "";
   });
 
-  // Spin animation keyframes (injected so we don't rely on @keyframes for inline use)
-  const styleTag = document.createElement("style");
-  styleTag.textContent = "@keyframes spin { to { transform: rotate(360deg); } }";
-  document.head.appendChild(styleTag);
-
-  // First estimate on load
+  // -------------------------------------------------------------------------
+  // Boot
+  // -------------------------------------------------------------------------
   showStep(1);
+  applyRoute();
   requestEstimate();
 })();
