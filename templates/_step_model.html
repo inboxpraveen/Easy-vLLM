@@ -1,0 +1,93 @@
+<section class="step is-active" data-step="1" aria-label="Step 1: Model">
+  <header class="step__header">
+    <h2 class="step__title">Pick your model</h2>
+    <p class="step__sub">Hugging Face ID or a local path. Drop the model's <code>config.json</code> for accurate memory estimation.</p>
+  </header>
+
+  <div class="field-group">
+    <div class="segmented" role="tablist" aria-label="Model source">
+      <input type="radio" id="src-hf" name="model_source" value="huggingface" checked />
+      <label for="src-hf" class="segmented__opt">Hugging Face ID</label>
+      <input type="radio" id="src-local" name="model_source" value="local" />
+      <label for="src-local" class="segmented__opt">Local path</label>
+    </div>
+
+    <div class="field" data-source="huggingface">
+      <label class="field__label" for="model_id">Hugging Face model ID</label>
+      <input class="field__input" type="text" id="model_id" name="model_id"
+             placeholder="Qwen/Qwen3-8B-Instruct" autocomplete="off" />
+      <p class="field__hint">e.g. <code>Qwen/Qwen3-8B-Instruct</code>, <code>meta-llama/Llama-3.1-8B-Instruct</code>.</p>
+    </div>
+
+    <div class="field" data-source="local" hidden>
+      <label class="field__label" for="local_model_path">Local model path (inside container)</label>
+      <input class="field__input" type="text" id="local_model_path" name="local_model_path"
+             placeholder="/models/qwen3-8b" autocomplete="off" />
+      <p class="field__hint">Mounted via <code>LOCAL_MODEL_DIR</code> in the generated <code>.env</code>.</p>
+    </div>
+
+    <div class="field">
+      <label class="field__label" for="served_model_name">Served model name <span class="field__optional">optional</span></label>
+      <input class="field__input" type="text" id="served_model_name" name="served_model_name"
+             placeholder="auto-derived from model id" autocomplete="off" />
+      <p class="field__hint">The name clients pass as <code>model</code> in API calls.</p>
+    </div>
+
+    <div class="field-row">
+      <label class="toggle">
+        <input type="checkbox" id="is_private_hf_model" name="is_private_hf_model" />
+        <span class="toggle__visual"></span>
+        <span class="toggle__text">Private / gated Hugging Face model
+          <span class="toggle__hint">Adds an HF_TOKEN slot to the generated .env.</span>
+        </span>
+      </label>
+    </div>
+
+    <div class="field-row">
+      <label class="toggle">
+        <input type="checkbox" id="trust_remote_code" name="trust_remote_code" />
+        <span class="toggle__visual"></span>
+        <span class="toggle__text">Trust remote code
+          <span class="toggle__hint">Some models require this. Only enable for repos you trust.</span>
+        </span>
+      </label>
+    </div>
+  </div>
+
+  <div class="field-group">
+    <h3 class="group-title">Model config <span class="group-title__hint">drop the model's <code>config.json</code> for accurate sizing</span></h3>
+
+    <label class="dropzone" id="config-dropzone" for="config-file-input">
+      <input type="file" id="config-file-input" accept="application/json,.json" hidden />
+      <div class="dropzone__inner">
+        <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <p class="dropzone__title">Drop <code>config.json</code> here</p>
+        <p class="dropzone__sub">or <span class="dropzone__cta">click to browse</span></p>
+      </div>
+    </label>
+
+    <div class="config-card" id="config-card" hidden>
+      <div class="config-card__head">
+        <span class="badge badge--success">parsed</span>
+        <span class="config-card__model" id="config-model-name">model</span>
+        <button type="button" class="btn-link" id="config-clear">clear</button>
+      </div>
+      <div class="config-card__grid" id="config-card-grid"></div>
+      <div class="config-card__notes" id="config-card-notes"></div>
+    </div>
+
+    <div class="field" id="manual-params-field">
+      <label class="field__label" for="manual_param_count_b">
+        Approximate parameter count (billions)
+        <span class="field__optional">optional</span>
+      </label>
+      <input class="field__input" type="number" step="0.1" min="0.1" max="2000"
+             id="manual_param_count_b" name="manual_param_count_b" placeholder="e.g. 8" />
+      <p class="field__hint">Skip if you uploaded <code>config.json</code> for a dense model. Useful for MoE / multimodal.</p>
+    </div>
+  </div>
+</section>

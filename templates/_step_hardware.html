@@ -1,0 +1,79 @@
+<section class="step" data-step="2" aria-label="Step 2: Hardware and workload" hidden>
+  <header class="step__header">
+    <h2 class="step__title">Pick your hardware &amp; workload</h2>
+    <p class="step__sub">We use these to estimate VRAM fit and pick safe defaults.</p>
+  </header>
+
+  <div class="field-group">
+    <h3 class="group-title">GPU</h3>
+
+    <div class="field">
+      <label class="field__label" for="gpu_preset">GPU preset</label>
+      <select class="field__input" id="gpu_preset" name="gpu_preset"></select>
+    </div>
+
+    <div class="field-row field-row--two">
+      <div class="field">
+        <label class="field__label" for="gpu_memory_gb">VRAM per GPU (GiB)</label>
+        <input class="field__input" type="number" min="1" max="2048" step="1"
+               id="gpu_memory_gb" name="gpu_memory_gb" value="24" />
+      </div>
+      <div class="field">
+        <label class="field__label" for="gpu_count">GPU count</label>
+        <input class="field__input" type="number" min="1" max="32"
+               id="gpu_count" name="gpu_count" value="1" />
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="slider-head">
+        <label class="field__label" for="gpu_memory_utilization">GPU memory utilization</label>
+        <output class="slider-out" id="gpu_memory_utilization_out">0.90</output>
+      </div>
+      <input class="slider" type="range" id="gpu_memory_utilization" name="gpu_memory_utilization"
+             min="0.50" max="0.97" step="0.01" value="0.90" />
+      <p class="field__hint">Fraction of VRAM vLLM is allowed to use. Lower = safer, higher = more KV room.</p>
+    </div>
+
+    <div class="field-row field-row--two">
+      <div class="field">
+        <label class="field__label" for="tensor_parallel_size">Tensor parallel size</label>
+        <input class="field__input" type="number" min="1" max="32" step="1"
+               id="tensor_parallel_size" name="tensor_parallel_size" value="1" />
+        <p class="field__hint">Splits one model across this many GPUs.</p>
+      </div>
+      <div class="field">
+        <label class="field__label" for="pipeline_parallel_size">Pipeline parallel size <span class="field__optional">advanced</span></label>
+        <input class="field__input" type="number" min="1" max="16" step="1"
+               id="pipeline_parallel_size" name="pipeline_parallel_size" value="1" />
+        <p class="field__hint">Multi-node territory. Leave at 1 for single-host.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="field-group">
+    <h3 class="group-title">Workload</h3>
+
+    <div class="field-row field-row--two">
+      <div class="field">
+        <label class="field__label" for="input_tokens">Expected input tokens</label>
+        <input class="field__input" type="number" min="1" max="2000000" step="1"
+               id="input_tokens" name="input_tokens" value="4096" />
+        <p class="field__hint">Per-request prompt size budget.</p>
+      </div>
+      <div class="field">
+        <label class="field__label" for="output_tokens">Expected output tokens</label>
+        <input class="field__input" type="number" min="1" max="2000000" step="1"
+               id="output_tokens" name="output_tokens" value="1024" />
+        <p class="field__hint">Per-request completion size budget.</p>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="field__label" for="max_num_seqs">Max concurrent requests</label>
+      <input class="field__input" type="number" min="1" max="4096" step="1"
+             id="max_num_seqs" name="max_num_seqs" value="32" />
+      <p class="field__hint">Maps to <code>--max-num-seqs</code>. Higher = more KV cache.</p>
+    </div>
+  </div>
+</section>

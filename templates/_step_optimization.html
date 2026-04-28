@@ -1,0 +1,129 @@
+<section class="step" data-step="3" aria-label="Step 3: Optimization" hidden>
+  <header class="step__header">
+    <h2 class="step__title">Optimize</h2>
+    <p class="step__sub">Pick precision and quantization. Toggle Advanced for the full vLLM flag set.</p>
+  </header>
+
+  <div class="mode-switch">
+    <span class="mode-switch__label">Mode</span>
+    <div class="segmented segmented--small" role="tablist" aria-label="Mode">
+      <input type="radio" id="mode-simple" name="ui_mode" value="simple" checked />
+      <label for="mode-simple" class="segmented__opt">Simple</label>
+      <input type="radio" id="mode-advanced" name="ui_mode" value="advanced" />
+      <label for="mode-advanced" class="segmented__opt">Advanced</label>
+    </div>
+  </div>
+
+  <div class="field-group">
+    <h3 class="group-title">Precision</h3>
+
+    <div class="field">
+      <label class="field__label" for="dtype">Data type (<code>--dtype</code>)</label>
+      <select class="field__input" id="dtype" name="dtype">
+        <option value="auto">auto (recommended)</option>
+        <option value="bfloat16">bfloat16</option>
+        <option value="float16">float16</option>
+        <option value="float32">float32</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label class="field__label" for="quantization">Quantization (<code>--quantization</code>)</label>
+      <select class="field__input" id="quantization" name="quantization">
+        <option value="none">None - use full precision</option>
+        <option value="awq">AWQ - 4-bit, NVIDIA-friendly</option>
+        <option value="gptq">GPTQ - 4-bit, broad support</option>
+        <option value="fp8">FP8 - Hopper / Ada / MI300X</option>
+        <option value="bitsandbytes">BitsAndBytes - simplest 4-bit</option>
+        <option value="gguf">GGUF - llama.cpp-style files</option>
+        <option value="marlin">Marlin - optimized AWQ/GPTQ kernels</option>
+      </select>
+      <p class="field__hint" id="quantization-hint">Pick a pre-quantized checkpoint matching this format.</p>
+    </div>
+
+    <div class="field-row">
+      <label class="toggle">
+        <input type="checkbox" id="enable_prefix_caching" name="enable_prefix_caching" checked />
+        <span class="toggle__visual"></span>
+        <span class="toggle__text">Enable prefix caching
+          <span class="toggle__hint">Speeds up repeated prompts. Recommended on.</span>
+        </span>
+      </label>
+    </div>
+  </div>
+
+  <div class="field-group adv-only">
+    <h3 class="group-title">Advanced runtime</h3>
+
+    <div class="field-row field-row--two">
+      <div class="field">
+        <label class="field__label" for="kv_cache_dtype">KV cache dtype</label>
+        <select class="field__input" id="kv_cache_dtype" name="kv_cache_dtype">
+          <option value="auto">auto</option>
+          <option value="fp16">fp16</option>
+          <option value="bf16">bf16</option>
+          <option value="fp8">fp8</option>
+          <option value="fp8_e4m3">fp8_e4m3</option>
+          <option value="fp8_e5m2">fp8_e5m2</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="field__label" for="max_num_batched_tokens">Max batched tokens <span class="field__optional">optional</span></label>
+        <input class="field__input" type="number" min="1" max="2000000" step="1"
+               id="max_num_batched_tokens" name="max_num_batched_tokens" placeholder="auto" />
+      </div>
+    </div>
+
+    <div class="field-row field-row--two">
+      <div class="field">
+        <label class="field__label" for="cpu_offload_gb">CPU offload (GiB) <span class="field__optional">optional</span></label>
+        <input class="field__input" type="number" min="0" max="1024" step="1"
+               id="cpu_offload_gb" name="cpu_offload_gb" placeholder="0" />
+      </div>
+      <div class="field">
+        <label class="field__label" for="load_format">Load format</label>
+        <select class="field__input" id="load_format" name="load_format">
+          <option value="auto">auto</option>
+          <option value="safetensors">safetensors</option>
+          <option value="pt">pt</option>
+          <option value="bitsandbytes">bitsandbytes</option>
+          <option value="gguf">gguf</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <label class="toggle">
+        <input type="checkbox" id="generation_config_vllm" name="generation_config_vllm" checked />
+        <span class="toggle__visual"></span>
+        <span class="toggle__text">Use vLLM generation config defaults
+          <span class="toggle__hint">Avoids surprise from HF generation defaults.</span>
+        </span>
+      </label>
+    </div>
+
+    <div class="field-row">
+      <label class="toggle">
+        <input type="checkbox" id="api_key_required" name="api_key_required" />
+        <span class="toggle__visual"></span>
+        <span class="toggle__text">Require API key
+          <span class="toggle__hint">Adds <code>--api-key ${VLLM_API_KEY}</code>.</span>
+        </span>
+      </label>
+    </div>
+
+    <div class="field">
+      <label class="field__label" for="image_tag">vLLM image tag</label>
+      <input class="field__input" type="text" id="image_tag" name="image_tag"
+             value="vllm/vllm-openai:latest" />
+      <p class="field__hint">Pin to a specific tag (e.g. <code>vllm/vllm-openai:v0.11.0</code>) for reproducibility.</p>
+    </div>
+
+    <div class="field">
+      <label class="field__label" for="extra_flags">Extra raw flags <span class="field__optional">optional</span></label>
+      <textarea class="field__input field__input--mono" id="extra_flags" name="extra_flags" rows="2"
+                placeholder="--swap-space 8 --seed 42"></textarea>
+      <p class="field__hint">Appended verbatim to the <code>vllm serve</code> command.</p>
+    </div>
+  </div>
+</section>

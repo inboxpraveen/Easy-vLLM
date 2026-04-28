@@ -1,0 +1,37 @@
+<div class="modal" id="result-modal" hidden role="dialog" aria-modal="true" aria-labelledby="result-title">
+  <div class="modal__backdrop" data-modal-close></div>
+  <div class="modal__panel">
+    <header class="modal__head">
+      <h3 class="modal__title" id="result-title">Your deployment is ready</h3>
+      <button type="button" class="modal__close" data-modal-close aria-label="Close">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </header>
+
+    <div class="modal__body">
+      <p class="modal__lead">
+        We packaged everything into a zip. Unpack, edit <code>.env</code>, then
+        run <code>docker compose up -d</code>.
+      </p>
+
+      <ul class="filelist">
+        <li><span class="filelist__icon"></span><code>docker-compose.yml</code><span class="filelist__sub">single-service vLLM deployment</span></li>
+        <li><span class="filelist__icon"></span><code>.env</code><span class="filelist__sub">tunables (port, HF_TOKEN, paths)</span></li>
+        <li><span class="filelist__icon"></span><code>test_client.py</code><span class="filelist__sub">OpenAI Python smoke test</span></li>
+        <li><span class="filelist__icon"></span><code>test_curl.sh</code><span class="filelist__sub">curl smoke test</span></li>
+        <li><span class="filelist__icon"></span><code>README.md</code><span class="filelist__sub">how-to + memory verdict</span></li>
+        <li><span class="filelist__icon"></span><code>config_summary.json</code><span class="filelist__sub">your wizard answers, for reproducibility</span></li>
+      </ul>
+
+      <div class="modal__actions">
+        <a id="download-zip" class="btn btn--primary btn--lg" download>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download zip
+        </a>
+        <button type="button" class="btn btn--ghost" data-modal-close>Keep editing</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-stack" id="toast-stack" aria-live="polite" aria-atomic="true"></div>

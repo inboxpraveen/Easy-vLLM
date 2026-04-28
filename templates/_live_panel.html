@@ -1,0 +1,58 @@
+<div class="live-panel__head">
+  <h3 class="live-panel__title">Live estimate</h3>
+  <span class="live-panel__pulse" id="live-pulse" aria-hidden="true"></span>
+</div>
+
+<div class="gauge" id="gauge">
+  <svg class="gauge__svg" viewBox="0 0 120 120" aria-hidden="true">
+    <circle class="gauge__track" cx="60" cy="60" r="52" />
+    <circle class="gauge__fill" id="gauge-fill" cx="60" cy="60" r="52" />
+  </svg>
+  <div class="gauge__center">
+    <span class="gauge__percent" id="gauge-percent">--%</span>
+    <span class="gauge__label" id="gauge-label">awaiting input</span>
+  </div>
+</div>
+
+<dl class="kv-list">
+  <div class="kv">
+    <dt>Weights</dt>
+    <dd><span class="num" id="m-weight">0.0</span> <span class="unit">GiB</span></dd>
+  </div>
+  <div class="kv">
+    <dt>KV cache</dt>
+    <dd><span class="num" id="m-kv">0.0</span> <span class="unit">GiB</span></dd>
+  </div>
+  <div class="kv">
+    <dt>Runtime overhead</dt>
+    <dd><span class="num" id="m-runtime">0.0</span> <span class="unit">GiB</span></dd>
+  </div>
+  <div class="kv kv--strong">
+    <dt>Total required</dt>
+    <dd><span class="num" id="m-total">0.0</span> <span class="unit">GiB</span></dd>
+  </div>
+  <div class="kv">
+    <dt>Usable on GPU</dt>
+    <dd><span class="num" id="m-usable">0.0</span> <span class="unit">GiB</span></dd>
+  </div>
+</dl>
+
+<div class="warnings" id="warnings" aria-label="Warnings">
+  <p class="warnings__empty" id="warnings-empty">No issues yet. Fill in the form to see warnings.</p>
+</div>
+
+<div class="suggestions" id="suggestions" hidden>
+  <h4 class="suggestions__title">Suggested fixes</h4>
+  <ul class="suggestions__list" id="suggestions-list"></ul>
+</div>
+
+<details class="cmd-block" id="cmd-block">
+  <summary>
+    <span>vllm serve command</span>
+    <button type="button" class="btn-copy" data-copy="cmd-text" aria-label="Copy command">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      copy
+    </button>
+  </summary>
+  <pre class="cmd-block__pre"><code id="cmd-text">vllm serve ...</code></pre>
+</details>
