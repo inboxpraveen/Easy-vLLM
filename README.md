@@ -214,4 +214,4 @@ Easy-vLLM is a community helper project built on top of the amazing [vLLM](https
 - vLLM source: <https://github.com/vllm-project/vllm>
 - vLLM docs: <https://docs.vllm.ai/>
 
-Easy-vLLM is licensed under the MIT license. See [LICENSE](LICENSE).
+Easy-vLLM is licensed under the Apache 2.0 license. See [LICENSE](LICENSE).
