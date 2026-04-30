@@ -1,4 +1,4 @@
-"""Flask routes for the easy-vLLM web app."""
+"""Flask routes for the Easy-vLLM web app."""
 from __future__ import annotations
 
 from flask import Flask, Response, current_app, jsonify, render_template, request, send_file

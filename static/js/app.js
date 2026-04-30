@@ -1,4 +1,4 @@
-/* easy-vLLM front-end logic.
+/* Easy-vLLM front-end logic.
  * Vanilla JS, no framework. Talks to /api/* endpoints.
  *
  * Architecture: a single page with three views (home, new, deployment),

@@ -25,7 +25,7 @@ def test_index_renders(client):
     res = client.get("/")
     assert res.status_code == 200
     body = res.data.decode()
-    assert "easy-vLLM" in body or "easy-" in body
+    assert "Easy-vLLM" in body or "easy-" in body
     assert "Live estimate" in body
 
 
